@@ -57,6 +57,15 @@ public class User {
 		this.verificationCode = verificationCode;
 		this.accountVerified = accountVerified;
 	}
+	
+	//delete this in official version
+	public User(String username, String password, String role, String email, boolean accountVerified) {
+		this.username = username;
+		this.password = password;
+		this.role = role;
+		this.email = email;
+		this.accountVerified = accountVerified;
+	}
 
 	public Long getId() {
 		return id;
