@@ -76,7 +76,7 @@ public class MainController {
 
 	@RequestMapping("/quizzes")
 	public @ResponseBody List<QuizRatingQuestions> quizListRest() {		
-		List<Quiz> quizzes = (List<Quiz>) quizRepository.findAll();
+		List<Quiz> quizzes = (List<Quiz>) quizRepository.findAllPublished();
 		Double rating;
 		QuizRatingQuestions quizRatingQuestions;
 		Integer questions;
@@ -156,7 +156,7 @@ public class MainController {
 			Optional<User> optUser = uRepository.findByUsername(myUser.getUsername());
 
 			if (optUser.isPresent() && optUser.get().getId() == userId) {
-				List<Quiz> quizzes = (List<Quiz>) quizRepository.findAll();
+				List<Quiz> quizzes = (List<Quiz>) quizRepository.findAllPublished();
 				Double rating;
 				QuizRatingQuestions quizRatingQuestions;
 				Integer questions;
