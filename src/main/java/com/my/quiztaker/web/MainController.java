@@ -137,9 +137,9 @@ public class MainController {
 					leaders.add(userRow);
 				}
 				
-				LeaderboardAuthorized leaderboardList = new LeaderboardAuthorized(leaders, position);
+				if (uRepository.findRatingByUserId(userId) == null) return new LeaderboardAuthorized(leaders, -1);
 				
-				return leaderboardList;
+				return new LeaderboardAuthorized(leaders, position);
 			} else {
 				return null;
 			}
