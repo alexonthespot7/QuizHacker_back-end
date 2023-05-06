@@ -43,7 +43,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 		.authorizeRequests()
 		.antMatchers(HttpMethod.GET, "/quizzes", "/quizzes/*", "/questions", "/questions/*", "/answers/*", "/difficulties", "/categories", "/users").permitAll()
 		.antMatchers(HttpMethod.POST, "/login", "/signup", "/verify/*", "/resetpassword").permitAll()
-		.antMatchers(HttpMethod.DELETE, "/deletequestion/*").authenticated()
+		.antMatchers(HttpMethod.DELETE, "/deletequestion/*", "/deletequiz/*").authenticated()
 		.antMatchers(HttpMethod.POST, "/changepassword", "/updatequiz", "/savequestions/*", "/publishquiz/*", "/sendattempt/*").authenticated()
 		.antMatchers(HttpMethod.GET, "/createquiz", "/quizzesbyuser/*", "/usersauth/*", "/users/*", "/personalquizzes/*").authenticated()
 		.anyRequest().hasAuthority("ADMIN").and()

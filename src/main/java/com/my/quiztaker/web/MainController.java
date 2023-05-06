@@ -5,6 +5,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -43,6 +45,8 @@ import com.my.quiztaker.forms.UserPublic;
 
 @RestController
 public class MainController {
+	private static final Logger log = LoggerFactory.getLogger(UserController.class);
+
 	@Autowired
 	private UserRepository uRepository;
 
@@ -318,7 +322,6 @@ public class MainController {
 		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
 			MyUser myUser = (MyUser) auth.getPrincipal();
 			Optional<User> optUser = uRepository.findByUsername(myUser.getUsername());
-
 			if (optUser.isPresent() && optUser.get().getId() == quiz.getUser()) {
 				if (catRepository.findById(quiz.getCategory()).isPresent()
 						&& difRepository.findById(quiz.getDifficulty()).isPresent()
@@ -469,6 +472,27 @@ public class MainController {
 			}
 		} else {
 			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); 
+		}
+	}
+	
+	@RequestMapping(value = "/deletequiz/{quizid}", method = RequestMethod.DELETE)
+	@PreAuthorize("isAuthenticated()")
+	public ResponseEntity<?> deleteQuizById(@PathVariable("quizid") Long quizId, Authentication auth) {
+		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
+			MyUser myUser = (MyUser) auth.getPrincipal();
+			Optional<User> optUser = uRepository.findByUsername(myUser.getUsername());
+			Optional<Quiz> optQuiz = quizRepository.findById(quizId);
+			if (optUser.isPresent() && optQuiz.isPresent() && optUser.get().getId() == optQuiz.get().getUser().getId()) {
+					Quiz quiz = optQuiz.get();
+					
+					quizRepository.delete(quiz);
+				
+					return new ResponseEntity<>("Quiz was deleted successfully", HttpStatus.OK);
+			} else {
+				return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401;
+			}
+		} else {
+			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401
 		}
 	}
 }
