@@ -109,7 +109,7 @@ public class MainController {
 				UserPublic userPublic = uRepository.findRatingByUserId(userId);
 				
 				if (userPublic == null) {
-					return new PersonalInfo(optUser.get().getUsername(), optUser.get().getEmail(), 0.0, attRepository.findAttemptsByUserId(userId), uRepository.findPositionByRating(userId));
+					return new PersonalInfo(optUser.get().getUsername(), optUser.get().getEmail(), 0.0, attRepository.findAttemptsByUserId(userId), -1);
 				}				
 				return new PersonalInfo(optUser.get().getUsername(), optUser.get().getEmail(), userPublic.getRating(), attRepository.findAttemptsByUserId(userId), uRepository.findPositionByRating(userId));
 			} else {
