@@ -33,6 +33,9 @@ public class User {
 	@Column(nullable = false, unique = true)
 	private String email;
 	
+	@Column(nullable = true)
+	private String avatarUrl;
+	
 	@Column(name = "verification_code", length = 6)
 	private String verificationCode;
 	
@@ -56,15 +59,7 @@ public class User {
 		this.email = email;
 		this.verificationCode = verificationCode;
 		this.accountVerified = accountVerified;
-	}
-	
-	//delete this in official version
-	public User(String username, String password, String role, String email, boolean accountVerified) {
-		this.username = username;
-		this.password = password;
-		this.role = role;
-		this.email = email;
-		this.accountVerified = accountVerified;
+		this.avatarUrl = null;
 	}
 
 	public Long getId() {
@@ -117,6 +112,14 @@ public class User {
 
 	public boolean isAccountVerified() {
 		return accountVerified;
+	}
+
+	public String getAvatarUrl() {
+		return avatarUrl;
+	}
+
+	public void setAvatarUrl(String avatarUrl) {
+		this.avatarUrl = avatarUrl;
 	}
 
 	public void setAccountVerified(boolean accountVerified) {

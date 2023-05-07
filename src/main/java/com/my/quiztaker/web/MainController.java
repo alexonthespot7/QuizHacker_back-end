@@ -495,4 +495,43 @@ public class MainController {
 			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401
 		}
 	}
+	
+	@RequestMapping(value = "/getavatar/{userid}")
+	@PreAuthorize("isAuthenticated()")
+	public @ResponseBody String getAvatarByUserId(@PathVariable("userid") Long userId, Authentication auth) {
+		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
+			MyUser myUser = (MyUser) auth.getPrincipal();
+			Optional<User> optUser = uRepository.findByUsername(myUser.getUsername());
+
+			if (optUser.isPresent() && optUser.get().getId() == userId) {
+				return optUser.get().getAvatarUrl();
+			} else {
+				return null;
+			}
+		} else {
+			return null;
+		}
+	}
+	
+	@RequestMapping(value = "/updateavatar/{userid}", method = RequestMethod.POST)
+	@PreAuthorize("isAuthenticated()")
+	public ResponseEntity<?> updateAvatarByUserId(@PathVariable("userid") Long userId, @RequestBody String url, Authentication auth) {
+		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
+			MyUser myUser = (MyUser) auth.getPrincipal();
+			Optional<User> optUser = uRepository.findByUsername(myUser.getUsername());
+
+			if (optUser.isPresent() && optUser.get().getId() == userId) {
+				User user = optUser.get();
+				user.setAvatarUrl(url);
+				
+				uRepository.save(user);
+				
+				return new ResponseEntity<>("The avatar url was updated successfully", HttpStatus.OK);
+			} else {
+				return new ResponseEntity<>("Unauthorized", HttpStatus.UNAUTHORIZED);
+			}
+		} else {
+			return new ResponseEntity<>("Unauthorized", HttpStatus.UNAUTHORIZED);
+		}
+	}
 }
