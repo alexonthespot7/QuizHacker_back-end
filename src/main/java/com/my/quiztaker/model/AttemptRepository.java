@@ -10,4 +10,7 @@ public interface AttemptRepository extends CrudRepository<Attempt, Long> {
 	
 	@Query(value = "SELECT COUNT(*) FROM attempt WHERE user_id = ?1", nativeQuery = true)
 	Integer findAttemptsByUserId(Long userId);
+	
+	@Query(value = "SELECT COUNT(*) FROM attempt WHERE user_id = ?1 AND quiz_id = ?2", nativeQuery = true)
+	Integer findAttemptsForTheQuizByUserId(Long userId, Long quizId);
 }
