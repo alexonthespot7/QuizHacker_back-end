@@ -168,7 +168,7 @@ public class MainController {
 				List<QuizRatingQuestions> quizRatingsQuestionss = new ArrayList<QuizRatingQuestions>();
 
 				for (Quiz quiz : quizzes) {
-					if (quiz.getUser().getId() != userId && attRepository.findAttemptsForTheQuizByUserId(userId, quiz.getQuizId()) < 0) {
+					if (quiz.getUser().getId() != userId && attRepository.findAttemptsForTheQuizByUserId(userId, quiz.getQuizId()) == 0) {
 						rating = attRepository.findQuizRating(quiz.getQuizId());
 						questions = questRepository.findQuestionsByQuizId(quiz.getQuizId()).size();
 						quizRatingQuestions = new QuizRatingQuestions(quiz, rating, questions);
