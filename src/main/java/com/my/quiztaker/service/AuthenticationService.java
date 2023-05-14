@@ -14,7 +14,7 @@ import io.jsonwebtoken.security.Keys;
 
 @Component
 public class AuthenticationService {
-	static final long EXPIRATION_TIME = 864_000_00;
+	static final long EXPIRATION_TIME = 60; //864_000_00;
 	static final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
 	static final String PREFIX = "Bearer";
 	
