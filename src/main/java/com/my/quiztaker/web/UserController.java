@@ -2,10 +2,11 @@ package com.my.quiztaker.web;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Optional;
+import java.util.Random;
 
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
+import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -24,6 +25,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.apache.commons.lang3.RandomStringUtils;
+
 import com.my.quiztaker.forms.AccountCredentials;
 import com.my.quiztaker.forms.PasswordChange;
 import com.my.quiztaker.forms.SignupCredentials;
@@ -31,7 +34,6 @@ import com.my.quiztaker.model.User;
 import com.my.quiztaker.model.UserRepository;
 import com.my.quiztaker.service.AuthenticationService;
 
-import net.bytebuddy.utility.RandomString;
 
 @RestController
 public class UserController {
@@ -59,7 +61,7 @@ public class UserController {
 				creds = new UsernamePasswordAuthenticationToken(userByMailPresent.getUsername(),
 						credentials.getPassword());
 			} else {
-				String randomCode = RandomString.make(6);
+				String randomCode = RandomStringUtils.random(6);
 				userByMailPresent.setVerificationCode(randomCode);
 				urepository.save(userByMailPresent);
 				this.sendVerificationEmail(userByMailPresent);
@@ -74,7 +76,7 @@ public class UserController {
 					creds = new UsernamePasswordAuthenticationToken(credentials.getUsername(),
 							credentials.getPassword());
 				} else {
-					String randomCode = RandomString.make(6);
+					String randomCode = RandomStringUtils.random(6);
 					userByUsername.setVerificationCode(randomCode);
 					urepository.save(userByUsername);
 					this.sendVerificationEmail(userByUsername);
@@ -108,7 +110,7 @@ public class UserController {
 			throws UnsupportedEncodingException, MessagingException {
 		BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
 		String hashPwd = bc.encode(creds.getPassword());
-		String randomCode = RandomString.make(6);
+		String randomCode = RandomStringUtils.random(6);
 
 		if (urepository.findByUsername(creds.getUsername()).isPresent()) {
 			return new ResponseEntity<>("Username is already in use", HttpStatus.CONFLICT);
@@ -182,7 +184,7 @@ public class UserController {
 			User currentUser = user.get();
 
 			if (currentUser.isAccountVerified()) {
-				String password = RandomString.make(15);
+				String password = RandomStringUtils.random(15);
 
 				BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
 				String hashPwd = bc.encode(password);
