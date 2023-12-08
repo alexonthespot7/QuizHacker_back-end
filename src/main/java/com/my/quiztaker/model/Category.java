@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.validation.constraints.NotBlank;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -19,6 +20,7 @@ public class Category {
 	@Column(nullable = false, updatable = false)
 	private Long categoryId;
 	
+	@NotBlank
 	@Column
 	private String name;
 	
