@@ -33,7 +33,7 @@ public class CategoryRepositoryTest {
 		categoryRepository.deleteAll();
 	}
 
-	// CRUD tests for the category repositories
+	// CRUD tests for the category repository
 
 	// Create functionality tests
 	@Test
