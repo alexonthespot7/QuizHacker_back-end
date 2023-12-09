@@ -22,29 +22,12 @@ public interface UserRepository extends CrudRepository<User, Long> {
 	@Query(value = "SELECT username, ROUND(CAST(SUM(att.score * dif.rate) AS numeric), 2) AS rating FROM users "
 			+ "JOIN attempt AS att ON (att.user_id = users.id) JOIN quiz ON (quiz.quiz_id = att.quiz_id) "
 			+ "JOIN difficulty AS dif ON (dif.difficulty_id = quiz.difficulty_id) "
-			+ "GROUP BY username ORDER BY SUM(att.score * dif.rate) DESC LIMIT 10", nativeQuery = true)
+			+ "GROUP BY username ORDER BY SUM(att.score * dif.rate) DESC, username ASC", nativeQuery = true)
 	List<UserPublic> findLeaderBoard();
 
-	@Query(value = "SELECT (COUNT(*) + 1) AS position FROM ( "
-			+ "SELECT users.id, SUM(att.score * dif.rate) AS total_score "
-			+ "  FROM users "
-			+ "  JOIN attempt AS att ON att.user_id = users.id\r\n"
-			+ "  JOIN quiz ON quiz.quiz_id = att.quiz_id\r\n"
-			+ "  JOIN difficulty AS dif ON dif.difficulty_id = quiz.difficulty_id\r\n"
-			+ "  GROUP BY users.id\r\n"
-			+ ") AS user_scores\r\n"
-			+ "WHERE user_scores.total_score > (\r\n"
-			+ "  SELECT SUM(att.score * dif.rate)\r\n"
-			+ "  FROM attempt AS att\r\n"
-			+ "  JOIN quiz ON quiz.quiz_id = att.quiz_id\r\n"
-			+ "  JOIN difficulty AS dif ON dif.difficulty_id = quiz.difficulty_id\r\n"
-			+ "  WHERE att.user_id = ?1\r\n"
-			+ ");", nativeQuery = true)
-	Integer findPositionByRating(Long userId);
-	
 	@Query(value = "SELECT username, ROUND(CAST(SUM(att.score * dif.rate) AS numeric), 2) AS rating FROM users "
 			+ "JOIN attempt AS att ON (att.user_id = users.id) JOIN quiz ON (quiz.quiz_id = att.quiz_id) "
 			+ "JOIN difficulty AS dif ON (dif.difficulty_id = quiz.difficulty_id) "
-			+ "WHERE id = ?1 GROUP BY username", nativeQuery=true)
+			+ "WHERE id = ?1 GROUP BY username", nativeQuery = true)
 	UserPublic findRatingByUserId(Long userId);
 }

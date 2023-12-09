@@ -68,6 +68,9 @@ public class MainController {
 	@Autowired
 	private DifficultyRepository difRepository;
 
+	// limit to display only top 10 players:
+	private static final int LIMIT = 10;
+
 	@RequestMapping("/categories")
 	public @ResponseBody List<Category> categoryListRest() {
 		return (List<Category>) catRepository.findAll();
@@ -79,43 +82,55 @@ public class MainController {
 	}
 
 	@RequestMapping("/quizzes")
-	public @ResponseBody List<QuizRatingQuestions> quizListRest() {		
+	public @ResponseBody List<QuizRatingQuestions> quizListRest() {
 		List<Quiz> quizzes = (List<Quiz>) quizRepository.findAllPublished();
 		Double rating;
 		QuizRatingQuestions quizRatingQuestions;
 		Integer questions;
-		
+
 		List<QuizRatingQuestions> quizRatingsQuestionss = new ArrayList<QuizRatingQuestions>();
 
 		for (Quiz quiz : quizzes) {
 			rating = attRepository.findQuizRating(quiz.getQuizId());
 			questions = questRepository.findQuestionsByQuizId(quiz.getQuizId()).size();
 			quizRatingQuestions = new QuizRatingQuestions(quiz, rating, questions);
-			
+
 			quizRatingsQuestionss.add(quizRatingQuestions);
 		}
-		
+
 		return quizRatingsQuestionss;
 	}
-	
+
 	@RequestMapping("/users")
 	public @ResponseBody LeaderboardAuthorized usersLeaderboard() {
-		return new LeaderboardAuthorized(uRepository.findLeaderBoard(), -1);
+		List<UserPublic> leaders = uRepository.findLeaderBoard();
+		if (leaders.size() > LIMIT) {
+			leaders = leaders.subList(0, LIMIT);
+		}
+		
+		return new LeaderboardAuthorized(leaders, -1);
 	}
-	
+
 	@RequestMapping("/users/{userid}")
 	@PreAuthorize("isAuthenticated()")
 	public @ResponseBody PersonalInfo restPersonalInfo(@PathVariable("userid") Long userId, Authentication auth) {
 		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
 			MyUser myUser = (MyUser) auth.getPrincipal();
 			Optional<User> optUser = uRepository.findByUsername(myUser.getUsername());
-			if (optUser.isPresent() && optUser.get().getId() == userId) {	
+			if (optUser.isPresent() && optUser.get().getId() == userId) {
 				UserPublic userPublic = uRepository.findRatingByUserId(userId);
-				
+
 				if (userPublic == null) {
-					return new PersonalInfo(optUser.get().getUsername(), optUser.get().getEmail(), 0.0, attRepository.findAttemptsByUserId(userId), -1);
-				}				
-				return new PersonalInfo(optUser.get().getUsername(), optUser.get().getEmail(), userPublic.getRating(), attRepository.findAttemptsByUserId(userId), uRepository.findPositionByRating(userId));
+					return new PersonalInfo(optUser.get().getUsername(), optUser.get().getEmail(), 0.0,
+							attRepository.findAttemptsByUserId(userId), -1);
+				}
+
+				String username = optUser.get().getUsername();
+				List<UserPublic> leaders = uRepository.findLeaderBoard();
+				int position = this.findPosition(username, leaders);
+
+				return new PersonalInfo(optUser.get().getUsername(), optUser.get().getEmail(), userPublic.getRating(),
+						attRepository.findAttemptsByUserId(userId), position);
 			} else {
 				return null;
 			}
@@ -123,26 +138,33 @@ public class MainController {
 			return null;
 		}
 	}
-	
+
 	@RequestMapping("/usersauth/{userid}")
 	@PreAuthorize("isAuthenticated()")
-	public @ResponseBody LeaderboardAuthorized leaderboardAuthorized(@PathVariable("userid") Long userId, Authentication auth) {
+	public @ResponseBody LeaderboardAuthorized leaderboardAuthorized(@PathVariable("userid") Long userId,
+			Authentication auth) {
 		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
 			MyUser myUser = (MyUser) auth.getPrincipal();
 			Optional<User> optUser = uRepository.findByUsername(myUser.getUsername());
 
-			if (optUser.isPresent() && optUser.get().getId() == userId) {				
+			if (optUser.isPresent() && optUser.get().getId() == userId) {
 				List<UserPublic> leaders = uRepository.findLeaderBoard();
-				
-				Integer position = uRepository.findPositionByRating(userId);
-				
-				if (position > 10) {
+				String username = optUser.get().getUsername();
+
+				int position = this.findPosition(username, leaders);
+
+				if (leaders.size() > LIMIT) {
+					leaders = leaders.subList(0, LIMIT);
+				}
+
+				if (position > LIMIT) {
 					UserPublic userRow = uRepository.findRatingByUserId(userId);
 					leaders.add(userRow);
 				}
-				
-				if (uRepository.findRatingByUserId(userId) == null) return new LeaderboardAuthorized(leaders, -1);
-				
+
+				if (uRepository.findRatingByUserId(userId) == null)
+					return new LeaderboardAuthorized(leaders, -1);
+
 				return new LeaderboardAuthorized(leaders, position);
 			} else {
 				return null;
@@ -151,10 +173,11 @@ public class MainController {
 			return null;
 		}
 	}
-	
+
 	@RequestMapping("/quizzesbyuser/{userid}")
 	@PreAuthorize("isAuthenticated()")
-	public @ResponseBody List<QuizRatingQuestions> quizListRestAuthenticated(@PathVariable("userid") Long userId, Authentication auth) {
+	public @ResponseBody List<QuizRatingQuestions> quizListRestAuthenticated(@PathVariable("userid") Long userId,
+			Authentication auth) {
 		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
 			MyUser myUser = (MyUser) auth.getPrincipal();
 			Optional<User> optUser = uRepository.findByUsername(myUser.getUsername());
@@ -164,19 +187,20 @@ public class MainController {
 				Double rating;
 				QuizRatingQuestions quizRatingQuestions;
 				Integer questions;
-				
+
 				List<QuizRatingQuestions> quizRatingsQuestionss = new ArrayList<QuizRatingQuestions>();
 
 				for (Quiz quiz : quizzes) {
-					if (quiz.getUser().getId() != userId && attRepository.findAttemptsForTheQuizByUserId(userId, quiz.getQuizId()) == 0) {
+					if (quiz.getUser().getId() != userId
+							&& attRepository.findAttemptsForTheQuizByUserId(userId, quiz.getQuizId()) == 0) {
 						rating = attRepository.findQuizRating(quiz.getQuizId());
 						questions = questRepository.findQuestionsByQuizId(quiz.getQuizId()).size();
 						quizRatingQuestions = new QuizRatingQuestions(quiz, rating, questions);
-						
+
 						quizRatingsQuestionss.add(quizRatingQuestions);
 					}
 				}
-				
+
 				return quizRatingsQuestionss;
 			} else {
 				return null;
@@ -185,10 +209,11 @@ public class MainController {
 			return null;
 		}
 	}
-	
+
 	@RequestMapping("/personalquizzes/{userid}")
 	@PreAuthorize("isAuthenticated()")
-	public @ResponseBody List<QuizRatingQuestions> getPersonalQuizzes(@PathVariable("userid") Long userId, Authentication auth) {
+	public @ResponseBody List<QuizRatingQuestions> getPersonalQuizzes(@PathVariable("userid") Long userId,
+			Authentication auth) {
 		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
 			MyUser myUser = (MyUser) auth.getPrincipal();
 			Optional<User> optUser = uRepository.findByUsername(myUser.getUsername());
@@ -198,7 +223,7 @@ public class MainController {
 				Double rating;
 				QuizRatingQuestions quizRatingQuestions;
 				Integer questions;
-				
+
 				List<QuizRatingQuestions> quizRatingsQuestionss = new ArrayList<QuizRatingQuestions>();
 
 				for (Quiz quiz : quizzes) {
@@ -206,11 +231,11 @@ public class MainController {
 						rating = attRepository.findQuizRating(quiz.getQuizId());
 						questions = questRepository.findQuestionsByQuizId(quiz.getQuizId()).size();
 						quizRatingQuestions = new QuizRatingQuestions(quiz, rating, questions);
-						
+
 						quizRatingsQuestionss.add(quizRatingQuestions);
 					}
 				}
-				
+
 				return quizRatingsQuestionss;
 			} else {
 				return null;
@@ -225,7 +250,7 @@ public class MainController {
 		if (quizRepository.findById(quizId).isPresent()) {
 			Quiz quiz = quizRepository.findById(quizId).get();
 			Double rating = attRepository.findQuizRating(quizId);
-			
+
 			return new QuizRating(quiz, rating);
 		} else {
 			return null;
@@ -279,14 +304,14 @@ public class MainController {
 			if (optUser.isPresent()) {
 				User user = optUser.get();
 				Quiz quiz = new Quiz(user, catRepository.findByName("Other").get(),
-						difRepository.findByName("Easy").get());
+						difRepository.findByName("Hard").get());
 				quizRepository.save(quiz);
 
 				Question defaultQuestion1 = new Question(quiz);
 				Question defaultQuestion2 = new Question(quiz);
 				questRepository.save(defaultQuestion1);
 				questRepository.save(defaultQuestion2);
-				
+
 				Answer defaultAnswer1 = new Answer(defaultQuestion1, true);
 				Answer defaultAnswer2 = new Answer(defaultQuestion1, false);
 				Answer defaultAnswer3 = new Answer(defaultQuestion1, false);
@@ -370,24 +395,25 @@ public class MainController {
 						newQuestion = new Question(question.getText(), question.getQuiz());
 						questRepository.save(newQuestion);
 						for (int i = 0; i < question.getAnswers().size(); i++) {
-							newAnswer = new Answer(question.getAnswers().get(i).getText(), question.getAnswers().get(i).isCorrect(), newQuestion);
+							newAnswer = new Answer(question.getAnswers().get(i).getText(),
+									question.getAnswers().get(i).isCorrect(), newQuestion);
 							answerRepository.save(newAnswer);
 						}
 					} else {
 						for (int i = 0; i < question.getAnswers().size(); i++) {
 							newAnswer = answerRepository.findById(question.getAnswers().get(i).getAnswerId()).get();
-							
+
 							newAnswer.setText(question.getAnswers().get(i).getText());
 							newAnswer.setCorrect(question.getAnswers().get(i).isCorrect());
 							answerRepository.save(newAnswer);
 						}
 						newQuestion = questRepository.findById(question.getQuestionId()).get();
-						
+
 						newQuestion.setText(question.getText());
 						questRepository.save(newQuestion);
 					}
 				}
-				
+
 				return new ResponseEntity<>("Everything was saved successfully", HttpStatus.OK);
 			} else {
 				return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401;
@@ -420,7 +446,7 @@ public class MainController {
 			return new ResponseEntity<>("There is no such question", HttpStatus.BAD_REQUEST); // 400
 		}
 	}
-	
+
 	@RequestMapping(value = "/publishquiz/{quizid}", method = RequestMethod.POST)
 	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<?> publishQuiz(@PathVariable("quizid") Long quizId, Authentication auth) {
@@ -428,8 +454,9 @@ public class MainController {
 			MyUser myUser = (MyUser) auth.getPrincipal();
 			Optional<User> optUser = uRepository.findByUsername(myUser.getUsername());
 			Optional<Quiz> optQuiz = quizRepository.findById(quizId);
-			
-			if (optUser.isPresent() && optQuiz.isPresent() && optUser.get().getId() == optQuiz.get().getUser().getId()) {
+
+			if (optUser.isPresent() && optQuiz.isPresent()
+					&& optUser.get().getId() == optQuiz.get().getUser().getId()) {
 				Quiz quiz = optQuiz.get();
 				quiz.setStatus("Published");
 				quizRepository.save(quiz);
@@ -439,42 +466,74 @@ public class MainController {
 				return new ResponseEntity<>("Authorization problems or quiz does not exist", HttpStatus.UNAUTHORIZED);
 			}
 		} else {
-			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); 
+			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED);
 		}
 	}
-	
+
 	@RequestMapping(value = "/sendattempt/{quizid}", method = RequestMethod.POST)
 	@PreAuthorize("isAuthenticated()")
-	public ResponseEntity<?> sendAttempt(@RequestBody AttemptForm attemptForm, @PathVariable("quizid") Long quizId, Authentication auth) {
+	public ResponseEntity<?> sendAttempt(@RequestBody AttemptForm attemptForm, @PathVariable("quizid") Long quizId,
+			Authentication auth) {
 		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
 			MyUser myUser = (MyUser) auth.getPrincipal();
 			Optional<User> optUser = uRepository.findByUsername(myUser.getUsername());
 			Optional<Quiz> optQuiz = quizRepository.findById(quizId);
-			
+
 			if (optUser.isPresent() && optQuiz.isPresent()) {
 				Quiz quiz = optQuiz.get();
 				User user = optUser.get();
-				
+
 				int score = 0;
-				
+
 				for (int i = 0; i < attemptForm.getAttemptAnswers().size(); i++) {
-					if (answerRepository.findById(attemptForm.getAttemptAnswers().get(i).getAnswerId()).get().isCorrect()) score += 1;
+					if (answerRepository.findById(attemptForm.getAttemptAnswers().get(i).getAnswerId()).get()
+							.isCorrect())
+						score += 1;
 				}
-				
+
 				Attempt attempt = new Attempt(score, quiz, user, attemptForm.getRating());
-				
+
 				attRepository.save(attempt);
 
 				return ResponseEntity.ok().header(HttpHeaders.HOST, Integer.toString(score))
 						.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
 			} else {
-				return new ResponseEntity<>("Authorization problems or quiz does not exist", HttpStatus.UNAUTHORIZED); 
+				return new ResponseEntity<>("Authorization problems or quiz does not exist", HttpStatus.UNAUTHORIZED);
 			}
 		} else {
-			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); 
+			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED);
 		}
 	}
-	
+
+	// Delete this method
+	@RequestMapping("/addattempt/{quizid}")
+	@PreAuthorize("isAuthenticated()")
+	public ResponseEntity<?> sendAttempt(@PathVariable("quizid") Long quizId, Authentication auth) {
+		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
+			MyUser myUser = (MyUser) auth.getPrincipal();
+			Optional<User> optUser = uRepository.findByUsername(myUser.getUsername());
+			Optional<Quiz> optQuiz = quizRepository.findById(quizId);
+
+			if (optUser.isPresent() && optQuiz.isPresent()) {
+				Quiz quiz = optQuiz.get();
+				User user = optUser.get();
+
+				int score = 5;
+
+				Attempt attempt = new Attempt(score, quiz, user, 4);
+
+				attRepository.save(attempt);
+
+				return ResponseEntity.ok().header(HttpHeaders.HOST, Integer.toString(score))
+						.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
+			} else {
+				return new ResponseEntity<>("Authorization problems or quiz does not exist", HttpStatus.UNAUTHORIZED);
+			}
+		} else {
+			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED);
+		}
+	}
+
 	@RequestMapping(value = "/deletequiz/{quizid}", method = RequestMethod.DELETE)
 	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<?> deleteQuizById(@PathVariable("quizid") Long quizId, Authentication auth) {
@@ -482,12 +541,13 @@ public class MainController {
 			MyUser myUser = (MyUser) auth.getPrincipal();
 			Optional<User> optUser = uRepository.findByUsername(myUser.getUsername());
 			Optional<Quiz> optQuiz = quizRepository.findById(quizId);
-			if (optUser.isPresent() && optQuiz.isPresent() && optUser.get().getId() == optQuiz.get().getUser().getId()) {
-					Quiz quiz = optQuiz.get();
-					
-					quizRepository.delete(quiz);
-				
-					return new ResponseEntity<>("Quiz was deleted successfully", HttpStatus.OK);
+			if (optUser.isPresent() && optQuiz.isPresent()
+					&& optUser.get().getId() == optQuiz.get().getUser().getId()) {
+				Quiz quiz = optQuiz.get();
+
+				quizRepository.delete(quiz);
+
+				return new ResponseEntity<>("Quiz was deleted successfully", HttpStatus.OK);
 			} else {
 				return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401;
 			}
@@ -495,7 +555,7 @@ public class MainController {
 			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401
 		}
 	}
-	
+
 	@RequestMapping(value = "/getavatar/{userid}")
 	@PreAuthorize("isAuthenticated()")
 	public @ResponseBody String getAvatarByUserId(@PathVariable("userid") Long userId, Authentication auth) {
@@ -512,10 +572,11 @@ public class MainController {
 			return null;
 		}
 	}
-	
+
 	@RequestMapping(value = "/updateavatar/{userid}", method = RequestMethod.POST)
 	@PreAuthorize("isAuthenticated()")
-	public ResponseEntity<?> updateAvatarByUserId(@PathVariable("userid") Long userId, @RequestBody String url, Authentication auth) {
+	public ResponseEntity<?> updateAvatarByUserId(@PathVariable("userid") Long userId, @RequestBody String url,
+			Authentication auth) {
 		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
 			MyUser myUser = (MyUser) auth.getPrincipal();
 			Optional<User> optUser = uRepository.findByUsername(myUser.getUsername());
@@ -523,9 +584,9 @@ public class MainController {
 			if (optUser.isPresent() && optUser.get().getId() == userId) {
 				User user = optUser.get();
 				user.setAvatarUrl(url);
-				
+
 				uRepository.save(user);
-				
+
 				return new ResponseEntity<>("The avatar url was updated successfully", HttpStatus.OK);
 			} else {
 				return new ResponseEntity<>("Unauthorized", HttpStatus.UNAUTHORIZED);
@@ -533,5 +594,23 @@ public class MainController {
 		} else {
 			return new ResponseEntity<>("Unauthorized", HttpStatus.UNAUTHORIZED);
 		}
+	}
+
+	private int findPosition(String username, List<UserPublic> leaders) {
+		int position = -1;
+		UserPublic userPublic;
+		String usernameOfCurrentUser;
+
+		for (int i = 0; i < leaders.size(); i++) {
+			userPublic = leaders.get(i);
+			usernameOfCurrentUser = userPublic.getUsername();
+
+			if (usernameOfCurrentUser.equals(username)) {
+				position = i + 1;
+				break;
+			}
+		}
+
+		return position;
 	}
 }
