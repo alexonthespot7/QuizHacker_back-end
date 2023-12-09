@@ -10,6 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
@@ -20,36 +21,40 @@ public class User {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(nullable = false, updatable = false)
 	private Long id;
-	
+
+	@NotBlank
 	@Column(nullable = false, unique = true)
 	private String username;
-	
+
+	@NotBlank
 	@Column(nullable = false)
 	private String password;
-	
+
 	@Column(nullable = false)
 	private String role;
-	
+
+	@NotBlank
 	@Column(nullable = false, unique = true)
 	private String email;
-	
+
 	@Column(nullable = true)
 	private String avatarUrl;
-	
+
 	@Column(name = "verification_code", length = 6)
 	private String verificationCode;
-	
+
 	private boolean accountVerified;
-	
+
 	@JsonIgnore
 	@OneToMany(cascade = CascadeType.ALL, mappedBy = "user")
 	private List<Quiz> quizzes;
-	
+
 	@JsonIgnore
 	@OneToMany(cascade = CascadeType.ALL, mappedBy = "user")
 	private List<Attempt> attempts;
-	
-	public User() {}
+
+	public User() {
+	}
 
 	public User(String username, String password, String role, String email, String verificationCode,
 			boolean accountVerified) {
