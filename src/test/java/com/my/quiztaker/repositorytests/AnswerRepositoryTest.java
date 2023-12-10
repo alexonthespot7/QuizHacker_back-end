@@ -89,7 +89,10 @@ public class AnswerRepositoryTest {
 
 		this.createDefaultAnswers(question);
 
-		List<Answer> answers = (List<Answer>) answerRepository.findAll();
+		List<Answer> answers = question.getAnswers();
+		assertThat(answers).hasSize(4);
+		
+		answers = (List<Answer>) answerRepository.findAll();
 		assertThat(answers).hasSize(4);
 
 		int rightAnswersQuantity = 0;
@@ -164,6 +167,8 @@ public class AnswerRepositoryTest {
 
 		List<String> answersTexts1 = answerRepository.findAnswerTextsByQuestionId(question1Id);
 		assertThat(answersTexts1).hasSize(4);
+		
+		assertThat(question1.getAnswers()).hasSize(4);
 
 		for (String answerText : answersTexts1) {
 			assertThat(answerText).isEqualTo("Answer");

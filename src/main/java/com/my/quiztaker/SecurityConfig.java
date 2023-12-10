@@ -49,7 +49,7 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, "/quizzes", "/quizzes/*", "/questions", "/questions/*", "/answers/*", "/difficulties", "/categories", "/users").permitAll()
 						.requestMatchers(HttpMethod.POST, "/login", "/signup", "/verify/*", "/resetpassword").permitAll()
 						.requestMatchers(HttpMethod.DELETE, "/deletequestion/*", "/deletequiz/*").authenticated()
-						.requestMatchers(HttpMethod.GET, "/createquiz", "/quizzesbyuser/*", "/usersauth/*", "/users/*", "/personalquizzes/*", "/getavatar/*").authenticated()
+						.requestMatchers(HttpMethod.GET, "/addattempt/*", "/createquiz", "/quizzesbyuser/*", "/usersauth/*", "/users/*", "/personalquizzes/*", "/getavatar/*").authenticated()
 						.requestMatchers(HttpMethod.POST, "/changepassword", "/updatequiz", "/savequestions/*", "/publishquiz/*", "/sendattempt/*", "/updateavatar/*").authenticated()
 						.anyRequest().hasAuthority("ADMIN"))
 				.addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class)

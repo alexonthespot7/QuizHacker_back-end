@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.core.Authentication;
 
 import com.my.quiztaker.model.Answer;
@@ -72,43 +73,97 @@ public class MainController {
 	private static final int LIMIT = 10;
 
 	@RequestMapping("/categories")
-	public @ResponseBody List<Category> categoryListRest() {
+	public @ResponseBody List<Category> getCategories() {
 		return (List<Category>) catRepository.findAll();
 	}
 
 	@RequestMapping("/difficulties")
-	public @ResponseBody List<Difficulty> difficultyListRest() {
+	public @ResponseBody List<Difficulty> getDifficulties() {
 		return (List<Difficulty>) difRepository.findAll();
 	}
 
 	@RequestMapping("/quizzes")
-	public @ResponseBody List<QuizRatingQuestions> quizListRest() {
+	public @ResponseBody List<QuizRatingQuestions> getQuizzes() {
 		List<Quiz> quizzes = (List<Quiz>) quizRepository.findAllPublished();
 		Double rating;
 		QuizRatingQuestions quizRatingQuestions;
 		Integer questions;
 
-		List<QuizRatingQuestions> quizRatingsQuestionss = new ArrayList<QuizRatingQuestions>();
+		List<QuizRatingQuestions> quizRatingsQuestionsList = new ArrayList<QuizRatingQuestions>();
 
 		for (Quiz quiz : quizzes) {
 			rating = attRepository.findQuizRating(quiz.getQuizId());
 			questions = questRepository.findQuestionsByQuizId(quiz.getQuizId()).size();
 			quizRatingQuestions = new QuizRatingQuestions(quiz, rating, questions);
 
-			quizRatingsQuestionss.add(quizRatingQuestions);
+			quizRatingsQuestionsList.add(quizRatingQuestions);
 		}
 
-		return quizRatingsQuestionss;
+		return quizRatingsQuestionsList;
 	}
 
 	@RequestMapping("/users")
-	public @ResponseBody LeaderboardAuthorized usersLeaderboard() {
+	public @ResponseBody LeaderboardAuthorized getLeaderboardNoAuth() {
 		List<UserPublic> leaders = uRepository.findLeaderBoard();
 		if (leaders.size() > LIMIT) {
 			leaders = leaders.subList(0, LIMIT);
 		}
-		
+
 		return new LeaderboardAuthorized(leaders, -1);
+	}
+
+	@RequestMapping("/quizzes/{quizid}")
+	public @ResponseBody QuizRating getQuizById(@PathVariable("quizid") Long quizId) {
+		if (quizRepository.findById(quizId).isPresent()) {
+			Quiz quiz = quizRepository.findById(quizId).get();
+			Double rating = attRepository.findQuizRating(quizId);
+
+			return new QuizRating(quiz, rating);
+		} else {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "There's no quiz with this id");
+		}
+	}
+
+	@RequestMapping("/questions/{quizid}")
+	public @ResponseBody List<Question> getQuestionsByQuizId(@PathVariable("quizid") Long quizId, Authentication auth) {
+
+		Optional<Quiz> optionalQuiz = quizRepository.findById(quizId);
+
+		if (!optionalQuiz.isPresent())
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "There's no quiz with this id");
+
+		List<Question> questions = questRepository.findQuestionsByQuizId(quizId);
+		if (auth == null) {
+			for (int i = 0; i < questions.size(); i++) {
+				for (int j = 0; j < questions.get(i).getAnswers().size(); j++) {
+					questions.get(i).getAnswers().get(j).setCorrect(false);
+				}
+			}
+		} else {
+			if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
+				MyUser myUser = (MyUser) auth.getPrincipal();
+				Optional<User> optUser = uRepository.findByUsername(myUser.getUsername());
+
+				if (optUser.isPresent() && quizRepository.findById(quizId).isPresent()
+						&& optUser.get().getId() == quizRepository.findById(quizId).get().getUser().getId()) {
+
+					return questRepository.findQuestionsByQuizId(quizId);
+				} else {
+					for (int i = 0; i < questions.size(); i++) {
+						for (int j = 0; j < questions.get(i).getAnswers().size(); j++) {
+							questions.get(i).getAnswers().get(j).setCorrect(false);
+						}
+					}
+				}
+			} else {
+				for (int i = 0; i < questions.size(); i++) {
+					for (int j = 0; j < questions.get(i).getAnswers().size(); j++) {
+						questions.get(i).getAnswers().get(j).setCorrect(false);
+					}
+				}
+			}
+		}
+		return questions;
 	}
 
 	@RequestMapping("/users/{userid}")
@@ -243,55 +298,6 @@ public class MainController {
 		} else {
 			return null;
 		}
-	}
-
-	@RequestMapping("/quizzes/{quizid}")
-	public @ResponseBody QuizRating findQuizByIdRest(@PathVariable("quizid") Long quizId) {
-		if (quizRepository.findById(quizId).isPresent()) {
-			Quiz quiz = quizRepository.findById(quizId).get();
-			Double rating = attRepository.findQuizRating(quizId);
-
-			return new QuizRating(quiz, rating);
-		} else {
-			return null;
-		}
-	}
-
-	@RequestMapping("/questions/{quizid}")
-	public @ResponseBody List<Question> findQuestionsByQuizId(@PathVariable("quizid") Long quizId,
-			Authentication auth) {
-		List<Question> questions = questRepository.findQuestionsByQuizId(quizId);
-		if (auth == null) {
-			for (int i = 0; i < questions.size(); i++) {
-				for (int j = 0; j < questions.get(i).getAnswers().size(); j++) {
-					questions.get(i).getAnswers().get(j).setCorrect(false);
-				}
-			}
-		} else {
-			if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
-				MyUser myUser = (MyUser) auth.getPrincipal();
-				Optional<User> optUser = uRepository.findByUsername(myUser.getUsername());
-
-				if (optUser.isPresent() && quizRepository.findById(quizId).isPresent()
-						&& optUser.get().getId() == quizRepository.findById(quizId).get().getUser().getId()) {
-
-					return questRepository.findQuestionsByQuizId(quizId);
-				} else {
-					for (int i = 0; i < questions.size(); i++) {
-						for (int j = 0; j < questions.get(i).getAnswers().size(); j++) {
-							questions.get(i).getAnswers().get(j).setCorrect(false);
-						}
-					}
-				}
-			} else {
-				for (int i = 0; i < questions.size(); i++) {
-					for (int j = 0; j < questions.get(i).getAnswers().size(); j++) {
-						questions.get(i).getAnswers().get(j).setCorrect(false);
-					}
-				}
-			}
-		}
-		return questions;
 	}
 
 	@RequestMapping(value = "/createquiz")
@@ -492,35 +498,6 @@ public class MainController {
 				}
 
 				Attempt attempt = new Attempt(score, quiz, user, attemptForm.getRating());
-
-				attRepository.save(attempt);
-
-				return ResponseEntity.ok().header(HttpHeaders.HOST, Integer.toString(score))
-						.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
-			} else {
-				return new ResponseEntity<>("Authorization problems or quiz does not exist", HttpStatus.UNAUTHORIZED);
-			}
-		} else {
-			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED);
-		}
-	}
-
-	// Delete this method
-	@RequestMapping("/addattempt/{quizid}")
-	@PreAuthorize("isAuthenticated()")
-	public ResponseEntity<?> sendAttempt(@PathVariable("quizid") Long quizId, Authentication auth) {
-		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
-			MyUser myUser = (MyUser) auth.getPrincipal();
-			Optional<User> optUser = uRepository.findByUsername(myUser.getUsername());
-			Optional<Quiz> optQuiz = quizRepository.findById(quizId);
-
-			if (optUser.isPresent() && optQuiz.isPresent()) {
-				Quiz quiz = optQuiz.get();
-				User user = optUser.get();
-
-				int score = 5;
-
-				Attempt attempt = new Attempt(score, quiz, user, 4);
 
 				attRepository.save(attempt);
 

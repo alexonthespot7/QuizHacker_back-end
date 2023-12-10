@@ -11,7 +11,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.MailAuthenticationException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -34,7 +37,6 @@ import com.my.quiztaker.model.User;
 import com.my.quiztaker.model.UserRepository;
 import com.my.quiztaker.service.AuthenticationService;
 
-
 @RestController
 public class UserController {
 	@Autowired
@@ -50,7 +52,8 @@ public class UserController {
 	private JavaMailSender mailSender;
 
 	@RequestMapping(value = "/login", method = RequestMethod.POST)
-	public ResponseEntity<?> getToken(@RequestBody AccountCredentials credentials) throws UnsupportedEncodingException, MessagingException {
+	public ResponseEntity<?> getToken(@RequestBody AccountCredentials credentials)
+			throws UnsupportedEncodingException, MessagingException {
 		Optional<User> userByMail = urepository.findByEmail(credentials.getUsername());
 
 		UsernamePasswordAuthenticationToken creds;
@@ -64,10 +67,19 @@ public class UserController {
 				String randomCode = RandomStringUtils.random(6);
 				userByMailPresent.setVerificationCode(randomCode);
 				urepository.save(userByMailPresent);
-				this.sendVerificationEmail(userByMailPresent);
-				
-				return ResponseEntity.accepted().header(HttpHeaders.HOST, userByMailPresent.getId().toString())
-						.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
+				try {
+					this.sendVerificationEmail(userByMailPresent);
+					return ResponseEntity.accepted().header(HttpHeaders.HOST, userByMailPresent.getId().toString())
+							.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
+				} catch (MailAuthenticationException exc) {
+					userByMailPresent.setAccountVerified(true);
+					userByMailPresent.setVerificationCode(null);
+					urepository.save(userByMailPresent);
+
+					return ResponseEntity.created(null).header(HttpHeaders.HOST, userByMailPresent.getId().toString())
+							.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").contentType(MediaType.TEXT_PLAIN)
+							.body("The email service is not available now, your account has been verified. You can login now");
+				}
 			}
 		} else {
 			if (urepository.findByUsername(credentials.getUsername()).isPresent()) {
@@ -79,10 +91,18 @@ public class UserController {
 					String randomCode = RandomStringUtils.random(6);
 					userByUsername.setVerificationCode(randomCode);
 					urepository.save(userByUsername);
-					this.sendVerificationEmail(userByUsername);
-					
-					return ResponseEntity.accepted().header(HttpHeaders.HOST, userByUsername.getId().toString())
-							.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
+					try {
+						this.sendVerificationEmail(userByUsername);
+						return ResponseEntity.accepted().header(HttpHeaders.HOST, userByUsername.getId().toString())
+								.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
+					} catch (MailAuthenticationException exc) {
+						userByUsername.setAccountVerified(true);
+						userByUsername.setVerificationCode(null);
+						return ResponseEntity.created(null).header(HttpHeaders.HOST, userByUsername.getId().toString())
+								.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host")
+								.contentType(MediaType.TEXT_PLAIN)
+								.body("The email service is not available now, your account has been verified. You can login now");
+					}
 				}
 			} else {
 				return new ResponseEntity<>("Bad credentials", HttpStatus.UNAUTHORIZED);
@@ -106,7 +126,7 @@ public class UserController {
 	}
 
 	@RequestMapping(value = "/signup", method = RequestMethod.POST)
-	public ResponseEntity<?> signUp(@RequestBody SignupCredentials creds, HttpServletRequest request)
+	public ResponseEntity<?> signUp(@RequestBody SignupCredentials creds)
 			throws UnsupportedEncodingException, MessagingException {
 		BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
 		String hashPwd = bc.encode(creds.getPassword());
@@ -119,9 +139,17 @@ public class UserController {
 		} else {
 			User newUser = new User(creds.getUsername(), hashPwd, "USER", creds.getEmail(), randomCode, false);
 			urepository.save(newUser);
-			this.sendVerificationEmail(newUser);
-			return ResponseEntity.ok().header(HttpHeaders.HOST, newUser.getId().toString())
-					.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
+			try {
+				this.sendVerificationEmail(newUser);
+				return ResponseEntity.ok().header(HttpHeaders.HOST, newUser.getId().toString())
+						.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
+			} catch (MailAuthenticationException exc) {
+				newUser.setAccountVerified(true);
+				newUser.setVerificationCode(null);
+				return ResponseEntity.created(null).header(HttpHeaders.HOST, newUser.getId().toString())
+						.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").contentType(MediaType.TEXT_PLAIN)
+						.body("The email service is not available now, your account has been verified. You can login now");
+			}
 		}
 	}
 
@@ -135,11 +163,10 @@ public class UserController {
 				urepository.save(user);
 				return new ResponseEntity<>("Verification went well", HttpStatus.OK);
 			} else {
-				return new ResponseEntity<>("Verification code is incorrect", HttpStatus.CONFLICT); //409
+				return new ResponseEntity<>("Verification code is incorrect", HttpStatus.CONFLICT); // 409
 			}
 		} else {
-			return new ResponseEntity<>("Wrong user id or the user is already verified",
-					HttpStatus.BAD_REQUEST); //400
+			return new ResponseEntity<>("Wrong user id or the user is already verified", HttpStatus.BAD_REQUEST); // 400
 		}
 	}
 
@@ -253,5 +280,4 @@ public class UserController {
 		mailSender.send(message);
 	}
 
-	
 }

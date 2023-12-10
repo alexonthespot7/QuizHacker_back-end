@@ -9,6 +9,8 @@ import com.my.quiztaker.model.Category;
 import com.my.quiztaker.model.CategoryRepository;
 import com.my.quiztaker.model.Difficulty;
 import com.my.quiztaker.model.DifficultyRepository;
+import com.my.quiztaker.model.User;
+import com.my.quiztaker.model.UserRepository;
 
 @SpringBootApplication
 public class QuiztakerApplication {
@@ -19,11 +21,11 @@ public class QuiztakerApplication {
 
 	@Bean
 	public CommandLineRunner tournamentDemo(DifficultyRepository difficultyRepository,
-			CategoryRepository categoryRepository) {
+			CategoryRepository categoryRepository, UserRepository userRepository) {
 		return (args) -> {
 			Difficulty hardDifficulty = new Difficulty("Hard", 1.0);
 			Difficulty mediumDifficulty = new Difficulty("Medium", 0.66);
-			Difficulty smallDifficulty = new Difficulty("Small", 0.33);
+			Difficulty smallDifficulty = new Difficulty("Easy", 0.33);
 			difficultyRepository.save(hardDifficulty);
 			difficultyRepository.save(mediumDifficulty);
 			difficultyRepository.save(smallDifficulty);
@@ -32,6 +34,13 @@ public class QuiztakerApplication {
 			Category itCategory = new Category("IT");
 			categoryRepository.save(otherCategory);
 			categoryRepository.save(itCategory);
+			
+			User user1 = new User("user1", "$2a$12$YV/TXHTDhWz5Y41p7X6WfegbFVF4/chhCzYtbXKm0gHxltazlbDoe", "USER", "user1@mail.com", null, true);
+			userRepository.save(user1);
+			
+			User user2 = new User("user2", "$2a$12$YV/TXHTDhWz5Y41p7X6WfegbFVF4/chhCzYtbXKm0gHxltazlbDoe", "USER", "user2@mail.com", null, true);
+			userRepository.save(user2);
+			
 		};
 	}
 
