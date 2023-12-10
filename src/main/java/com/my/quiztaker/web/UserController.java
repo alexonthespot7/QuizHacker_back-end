@@ -154,8 +154,11 @@ public class UserController {
 	}
 
 	@RequestMapping(value = "/verify/{userid}", method = RequestMethod.POST)
-	public ResponseEntity<?> verifyRequest(@RequestBody String token, @PathVariable("userid") Long userId) {
-		if (urepository.findById(userId).isPresent() && !urepository.findById(userId).get().isAccountVerified()) {
+	public ResponseEntity<?> verifyUser(@RequestBody String token, @PathVariable("userid") Long userId) {
+		if (!urepository.findById(userId).isPresent())
+			return new ResponseEntity<>("Wrong user id", HttpStatus.BAD_REQUEST); // 400
+
+		if (!urepository.findById(userId).get().isAccountVerified()) {
 			User user = urepository.findById(userId).get();
 			if (user.getVerificationCode().equals(token)) {
 				user.setVerificationCode(null);
@@ -166,7 +169,7 @@ public class UserController {
 				return new ResponseEntity<>("Verification code is incorrect", HttpStatus.CONFLICT); // 409
 			}
 		} else {
-			return new ResponseEntity<>("Wrong user id or the user is already verified", HttpStatus.BAD_REQUEST); // 400
+			return new ResponseEntity<>("The user is already verified", HttpStatus.BAD_REQUEST); // 400
 		}
 	}
 
@@ -218,9 +221,13 @@ public class UserController {
 				currentUser.setPassword(hashPwd);
 				urepository.save(currentUser);
 
-				this.sendPasswordEmail(currentUser, password);
-
-				return new ResponseEntity<>("A temporary password was sent to your email address", HttpStatus.OK);
+				try {
+					this.sendPasswordEmail(currentUser, password);
+					return new ResponseEntity<>("A temporary password was sent to your email address", HttpStatus.OK);
+				} catch (MailAuthenticationException exc) {
+					return new ResponseEntity<>("This service isn't available at the moment",
+							HttpStatus.INTERNAL_SERVER_ERROR);
+				}
 			} else {
 				return new ResponseEntity<>("User with this email (" + email + ") is not verified",
 						HttpStatus.UNAUTHORIZED);
