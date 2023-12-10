@@ -2,8 +2,11 @@ package com.my.quiztaker.resttests;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 
 import java.util.List;
 
@@ -42,14 +45,6 @@ import com.my.quiztaker.model.User;
 import com.my.quiztaker.model.UserRepository;
 
 import jakarta.transaction.Transactional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -103,7 +98,7 @@ public class RestPublicControllerTest {
 
 	@Test
 	@Rollback
-	public void testGetCategories() throws Exception {
+	public void testGetCategoriesAllCases() throws Exception {
 		String requestURI = END_POINT_PATH + "/categories";
 
 		mockMvc.perform(get(requestURI)).andExpect(status().isOk())
@@ -117,7 +112,7 @@ public class RestPublicControllerTest {
 
 	@Test
 	@Rollback
-	public void testGetDifficulties() throws Exception {
+	public void testGetDifficultiesAllCases() throws Exception {
 		String requestURI = END_POINT_PATH + "/difficulties";
 
 		mockMvc.perform(get(requestURI)).andExpect(status().isOk())
@@ -131,7 +126,7 @@ public class RestPublicControllerTest {
 
 	@Test
 	@Rollback
-	public void testGetQuizzes() throws Exception {
+	public void testGetQuizzesAllCases() throws Exception {
 		String requestURI = END_POINT_PATH + "/quizzes";
 
 		mockMvc.perform(get(requestURI)).andExpect(status().isOk())
@@ -161,7 +156,7 @@ public class RestPublicControllerTest {
 
 	@Test
 	@Rollback
-	public void testGetLeaderboardNoAuth() throws Exception {
+	public void testGetLeaderboardNoAuthCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/users";
 
 		mockMvc.perform(get(requestURI)).andExpect(status().isOk())
@@ -183,7 +178,7 @@ public class RestPublicControllerTest {
 
 	@Test
 	@Rollback
-	public void testGetQuizById() throws Exception {
+	public void testGetQuizByIdAllCases() throws Exception {
 		String requestURI = END_POINT_PATH + "/quizzes/";
 
 		// Case when quiz is not found by id
@@ -367,7 +362,7 @@ public class RestPublicControllerTest {
 	}
 
 	// Signup functionality:
-	
+
 	@Test
 	@Rollback
 	public void testSignUpGoodCase() throws Exception {
@@ -406,7 +401,7 @@ public class RestPublicControllerTest {
 
 		mockMvc.perform(post(requestURI).contentType(MediaType.APPLICATION_JSON).content(requestBodyUsernameInUse))
 				.andExpect(status().isConflict());
-		
+
 		// Email in use case:
 		String emailInUse = "user1@mail.com";
 		String goodUsername = "user3";
@@ -416,6 +411,112 @@ public class RestPublicControllerTest {
 
 		mockMvc.perform(post(requestURI).contentType(MediaType.APPLICATION_JSON).content(requestBodyEmailInUse))
 				.andExpect(status().isNotAcceptable());
+	}
+
+	// Test verify functionality
+	@Test
+	@Rollback
+	public void testVerifyUserWrongIdOrUserAlreadyVerifiedCases() throws Exception {
+		String requestURI = END_POINT_PATH + "/verify/";
+
+		String verificationCode = "some12";
+
+		// Wrong user id case:
+		String worngIdRequestURI = requestURI + Long.valueOf(12);
+
+		mockMvc.perform(post(worngIdRequestURI).contentType(MediaType.APPLICATION_JSON).content(verificationCode))
+				.andExpect(status().isBadRequest()).andExpect(content().string("Wrong user id"));
+
+		// User is already verified case:
+		User user1 = userRepository.findByUsername("user1").get();
+		Long user1Id = user1.getId();
+
+		String allreadyVerifiedRequestURI = requestURI + user1Id;
+		mockMvc.perform(
+				post(allreadyVerifiedRequestURI).contentType(MediaType.APPLICATION_JSON).content(verificationCode))
+				.andExpect(status().isBadRequest()).andExpect(content().string("The user is already verified"));
+	}
+
+	@Test
+	@Rollback
+	public void testVerifyUserCodeIsIncorrectCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/verify/";
+
+		String verificationCode = "some12";
+
+		String unverifiedUsername = "user3";
+		String unverifiedEmail = "user3@mail.com";
+
+		User unverifiedUser = this.createCustomUser(unverifiedUsername, unverifiedEmail, false);
+		Long unverifiedUserId = unverifiedUser.getId();
+
+		String rightIdRequestURI = requestURI + unverifiedUserId;
+
+		mockMvc.perform(post(rightIdRequestURI).contentType(MediaType.APPLICATION_JSON).content(verificationCode))
+				.andExpect(status().isConflict()).andExpect(content().string("Verification code is incorrect"));
+	}
+
+	@Test
+	@Rollback
+	public void testVerifyUserGoodCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/verify/";
+
+		String verificationCode = "123453";
+
+		String unverifiedUsername = "user3";
+		String unverifiedEmail = "user3@mail.com";
+
+		User unverifiedUser = this.createCustomUser(unverifiedUsername, unverifiedEmail, false);
+		Long unverifiedUserId = unverifiedUser.getId();
+
+		String rightIdRequestURI = requestURI + unverifiedUserId;
+
+		mockMvc.perform(post(rightIdRequestURI).contentType(MediaType.APPLICATION_JSON).content(verificationCode))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	@Rollback
+	public void testResetPasswordNotFoundCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/resetpassword";
+
+		String emailNotFoundCase = "wrong@mail.com";
+
+		mockMvc.perform(post(requestURI).contentType(MediaType.APPLICATION_JSON).content(emailNotFoundCase))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	@Rollback
+	public void testResetPasswordNotVerifiedCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/resetpassword";
+
+		String unverifiedUsername = "user3";
+		String unverifiedEmail = "user3@mail.com";
+
+		this.createCustomUser(unverifiedUsername, unverifiedEmail, false);
+
+		mockMvc.perform(post(requestURI).contentType(MediaType.APPLICATION_JSON).content(unverifiedEmail))
+				.andExpect(status().isUnauthorized())
+				.andExpect(content().string("User with this email (" + unverifiedEmail + ") is not verified"));
+	}
+
+	@Test
+	@Rollback
+	public void testResetPasswordGoodCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/resetpassword";
+
+		String goodEmail = "user1@mail.com";
+
+		if (this.springMailUsername.equals("default_value")) {
+			mockMvc.perform(post(requestURI).contentType(MediaType.APPLICATION_JSON).content(goodEmail))
+					.andExpect(status().isInternalServerError())
+					.andExpect(content().string("This service isn't available at the moment"));
+		} else {
+			mockMvc.perform(post(requestURI).contentType(MediaType.APPLICATION_JSON).content(goodEmail))
+					.andExpect(status().isOk());
+		}
+
 	}
 
 	private void deleteAll() {
