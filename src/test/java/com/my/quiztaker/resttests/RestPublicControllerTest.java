@@ -642,20 +642,20 @@ public class RestPublicControllerTest {
 		Question newQuestion = new Question(quiz);
 		questionRepository.save(newQuestion);
 
-		Answer defaultAnswer1 = new Answer(newQuestion, true);
-		Answer defaultAnswer2 = new Answer(newQuestion, false);
-		Answer defaultAnswer3 = new Answer(newQuestion, false);
-		Answer defaultAnswer4 = new Answer(newQuestion, false);
-
-		answerRepository.save(defaultAnswer1);
-		answerRepository.save(defaultAnswer2);
-		answerRepository.save(defaultAnswer3);
-		answerRepository.save(defaultAnswer4);
+		
 
 		return newQuestion;
 	}
 
 	private void createDefaultAnswers(Question question) {
+		Answer defaultAnswer1 = new Answer(question, true);
+		Answer defaultAnswer2 = new Answer(question, false);
+		Answer defaultAnswer3 = new Answer(question, false);
+		Answer defaultAnswer4 = new Answer(question, false);
 
+		answerRepository.save(defaultAnswer1);
+		answerRepository.save(defaultAnswer2);
+		answerRepository.save(defaultAnswer3);
+		answerRepository.save(defaultAnswer4);
 	}
 }
