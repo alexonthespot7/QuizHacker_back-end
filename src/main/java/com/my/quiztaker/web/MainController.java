@@ -72,59 +72,20 @@ public class MainController {
 	// limit to display only top 10 players:
 	private static final int LIMIT = 10;
 
-	@RequestMapping("/questions/{quizid}")
-	public @ResponseBody List<Question> getQuestionsByQuizId(@PathVariable("quizid") Long quizId, Authentication auth) {
-
-		Optional<Quiz> optionalQuiz = quizRepository.findById(quizId);
-
-		if (!optionalQuiz.isPresent())
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "There's no quiz with this id");
-
-		List<Question> questions = questRepository.findQuestionsByQuizId(quizId);
-		if (auth == null) {
-			for (int i = 0; i < questions.size(); i++) {
-				for (int j = 0; j < questions.get(i).getAnswers().size(); j++) {
-					questions.get(i).getAnswers().get(j).setCorrect(false);
-				}
-			}
-		} else {
-			if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
-				MyUser myUser = (MyUser) auth.getPrincipal();
-				Optional<User> optUser = urepository.findByUsername(myUser.getUsername());
-
-				if (optUser.isPresent() && quizRepository.findById(quizId).isPresent()
-						&& optUser.get().getId() == quizRepository.findById(quizId).get().getUser().getId()) {
-
-					return questRepository.findQuestionsByQuizId(quizId);
-				} else {
-					for (int i = 0; i < questions.size(); i++) {
-						for (int j = 0; j < questions.get(i).getAnswers().size(); j++) {
-							questions.get(i).getAnswers().get(j).setCorrect(false);
-						}
-					}
-				}
-			} else {
-				for (int i = 0; i < questions.size(); i++) {
-					for (int j = 0; j < questions.get(i).getAnswers().size(); j++) {
-						questions.get(i).getAnswers().get(j).setCorrect(false);
-					}
-				}
-			}
-		}
-		return questions;
-	}
+	
 
 	@RequestMapping("/users/{userid}")
 	@PreAuthorize("isAuthenticated()")
-	public @ResponseBody PersonalInfo restPersonalInfo(@PathVariable("userid") Long userId, Authentication auth) {
+	public @ResponseBody PersonalInfo getLeaderboardAuth(@PathVariable("userid") Long userId, Authentication auth) {
 		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
 			MyUser myUser = (MyUser) auth.getPrincipal();
 			Optional<User> optUser = urepository.findByUsername(myUser.getUsername());
 			if (optUser.isPresent() && optUser.get().getId() == userId) {
 				UserPublic userPublic = urepository.findRatingByUserId(userId);
-
+				
+				// if user doesn't have any attempts
 				if (userPublic == null) {
-					return new PersonalInfo(optUser.get().getUsername(), optUser.get().getEmail(), 0.0,
+					return new PersonalInfo(optUser.get().getUsername(), optUser.get().getEmail(), 0,
 							attRepository.findAttemptsByUserId(userId), -1);
 				}
 
@@ -135,10 +96,10 @@ public class MainController {
 				return new PersonalInfo(optUser.get().getUsername(), optUser.get().getEmail(), userPublic.getRating(),
 						attRepository.findAttemptsByUserId(userId), position);
 			} else {
-				return null;
+				throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
 			}
 		} else {
-			return null;
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
 		}
 	}
 
