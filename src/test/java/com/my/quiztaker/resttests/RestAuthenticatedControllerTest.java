@@ -1,6 +1,7 @@
 package com.my.quiztaker.resttests;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -12,6 +13,7 @@ import java.util.List;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,9 +21,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.Rollback;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.my.quiztaker.forms.AccountCredentials;
 import com.my.quiztaker.model.Answer;
@@ -83,6 +88,136 @@ public class RestAuthenticatedControllerTest {
 		this.getToken();
 	}
 
+	@Test
+	@Rollback
+	public void testQuestionsByQuizAuthenticatedOtherUserQuizGoodCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/questions/";
+
+		// Case when fetching quiz of the other user:
+		User user1 = userRepository.findByUsername("user1").get();
+		Long user1Id = user1.getId();
+
+		List<Quiz> quizzes = quizRepository.findQuizzesFromOtherUsers(user1Id);
+		Quiz quizNotFromUser1 = quizzes.get(0);
+		Long quizNotFromUser1Id = quizNotFromUser1.getQuizId();
+		String notUser1QuizURI = requestURI + quizNotFromUser1Id;
+
+		MvcResult result = mockMvc.perform(get(notUser1QuizURI).header("Authorization", jwtToken))
+				.andExpect(status().isOk()).andExpect(MockMvcResultMatchers.jsonPath("$.size()").value(2)).andReturn();
+		String questionsAsString = result.getResponse().getContentAsString();
+
+		TypeReference<List<Question>> typeReference = new TypeReference<List<Question>>() {
+		};
+		List<Question> questions = objectMapper.readValue(questionsAsString, typeReference);
+
+		for (Question question : questions) {
+			List<Answer> answers = question.getAnswers();
+			for (Answer answer : answers) {
+				assertThat(answer.isCorrect()).isFalse();
+			}
+		}
+	}
+
+	@Test
+	@Rollback
+	public void testQuestionsByQuizAuthenticatedThisUserQuizGoodCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/questions/";
+
+		// Case when fetching quiz of the other user:
+		User user1 = userRepository.findByUsername("user1").get();
+		Long user1Id = user1.getId();
+
+		// Looking for the quiz created by user1
+		List<Quiz> quizzes = (List<Quiz>) quizRepository.findAll();
+		Quiz user1Quiz = null;
+		for (Quiz quiz : quizzes) {
+			if (quiz.getUser().getId() == user1Id) {
+				user1Quiz = quiz;
+				break;
+			}
+		}
+		Long user1QuizId = user1Quiz.getQuizId();
+		String user1QuizURI = requestURI + user1QuizId;
+
+		MvcResult result = mockMvc.perform(get(user1QuizURI).header("Authorization", jwtToken))
+				.andExpect(status().isOk()).andExpect(MockMvcResultMatchers.jsonPath("$.size()").value(2)).andReturn();
+		String questionsAsString = result.getResponse().getContentAsString();
+
+		TypeReference<List<Question>> typeReference = new TypeReference<List<Question>>() {
+		};
+		List<Question> questions = objectMapper.readValue(questionsAsString, typeReference);
+
+		boolean allFalse;
+
+		// Checking that not all the answers are false, so that the answers are shown to
+		// the quiz owner
+		for (Question question : questions) {
+			allFalse = true;
+			List<Answer> answers = question.getAnswers();
+			for (Answer answer : answers) {
+				if (answer.isCorrect()) {
+					allFalse = false;
+					break;
+				}
+			}
+			assertThat(allFalse).isFalse();
+		}
+	}
+
+	@Test
+	@Rollback
+	public void testGetLeaderboardAuthIdMissmatchCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/users/";
+
+		// Userid missmatch case (the authentication is for user1, let's use user's 2
+		// id):
+		User user2 = userRepository.findByUsername("user2").get();
+		Long user2Id = user2.getId();
+
+		String requestURIWrongId = requestURI + user2Id;
+
+		mockMvc.perform(get(requestURIWrongId).header("Authorization", jwtToken)).andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	@Rollback
+	public void testGetLeaderboardAuthNoRatingCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/users/";
+
+		User user1 = userRepository.findByUsername("user1").get();
+		Long user1Id = user1.getId();
+
+		String requestURINoRating = requestURI + user1Id;
+
+		mockMvc.perform(get(requestURINoRating).header("Authorization", jwtToken)).andExpect(status().isOk())
+				.andExpect(MockMvcResultMatchers.jsonPath("$.position").value(-1))
+				.andExpect(MockMvcResultMatchers.jsonPath("$.attempts").value(0))
+				.andExpect(MockMvcResultMatchers.jsonPath("$.username").value("user1"))
+				.andExpect(MockMvcResultMatchers.jsonPath("$.score").value(0));
+	}
+	
+	@Test
+	@Rollback
+	public void testGetLeaderboardAuthWithRatingCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/users/";
+				
+		User user1 = userRepository.findByUsername("user1").get();
+		Long user1Id = user1.getId();
+		String requestURINoRating = requestURI + user1Id;
+		
+		List<Quiz> quizzesForUser1 = quizRepository.findQuizzesFromOtherUsers(user1Id);
+		Quiz quizForUser1 = quizzesForUser1.get(0);
+		this.createAttempt(user1, quizForUser1);
+
+		mockMvc.perform(get(requestURINoRating).header("Authorization", jwtToken)).andExpect(status().isOk())
+				.andExpect(MockMvcResultMatchers.jsonPath("$.position").value(2))
+				.andExpect(MockMvcResultMatchers.jsonPath("$.attempts").value(1))
+				.andExpect(MockMvcResultMatchers.jsonPath("$.username").value("user1"))
+				.andExpect(MockMvcResultMatchers.jsonPath("$.score").value(5 * 1));
+	}
+	
+	
+
 	private void getToken() throws Exception {
 		String requestURI = END_POINT_PATH + "/login";
 
@@ -131,9 +266,9 @@ public class RestAuthenticatedControllerTest {
 	}
 
 	private void createDifficulties() {
-		Difficulty hardDifficulty = new Difficulty("Hard", 1.0);
-		Difficulty mediumDifficulty = new Difficulty("Medium", 0.66);
-		Difficulty smallDifficulty = new Difficulty("Easy", 0.33);
+		Difficulty hardDifficulty = new Difficulty("Hard", 3);
+		Difficulty mediumDifficulty = new Difficulty("Medium", 2);
+		Difficulty smallDifficulty = new Difficulty("Easy", 1);
 		difficultyRepository.save(hardDifficulty);
 		difficultyRepository.save(mediumDifficulty);
 		difficultyRepository.save(smallDifficulty);
