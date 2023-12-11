@@ -39,10 +39,10 @@ public class DifficultyRepositoryTest {
 	@Test
 	@Rollback
 	public void testCreateDifficulty() {
-		Difficulty newDifficulty1 = this.createDifficulty("Hard", 1.0);
+		Difficulty newDifficulty1 = this.createDifficulty("Hard", 3);
 		assertThat(newDifficulty1.getDifficultyId()).isNotNull();
 
-		this.createDifficulty("Medium", 0.66);
+		this.createDifficulty("Medium", 2);
 		List<Difficulty> difficulties = (List<Difficulty>) difficultyRepository.findAll();
 		assertThat(difficulties).hasSize(2);
 	}
@@ -57,9 +57,9 @@ public class DifficultyRepositoryTest {
 		Optional<Difficulty> optionalDifficulty = difficultyRepository.findById(Long.valueOf(2));
 		assertThat(optionalDifficulty).isNotPresent();
 
-		Difficulty newDifficulty1 = this.createDifficulty("Hard", 1.0);
+		Difficulty newDifficulty1 = this.createDifficulty("Hard", 3);
 		Long newDifficulty1Id = newDifficulty1.getDifficultyId();
-		this.createDifficulty("Hard", 1.0);
+		this.createDifficulty("Hard", 3);
 
 		difficulties = (List<Difficulty>) difficultyRepository.findAll();
 		assertThat(difficulties).hasSize(2);
@@ -75,7 +75,7 @@ public class DifficultyRepositoryTest {
 		Optional<Difficulty> optionalDifficulty = difficultyRepository.findByName(nameToFindDifficulty);
 		assertThat(optionalDifficulty).isNotPresent();
 
-		this.createDifficulty(nameToFindDifficulty, 1.0);
+		this.createDifficulty(nameToFindDifficulty, 3);
 		optionalDifficulty = difficultyRepository.findByName(nameToFindDifficulty);
 		assertThat(optionalDifficulty).isPresent();
 	}
@@ -84,9 +84,9 @@ public class DifficultyRepositoryTest {
 	@Test
 	@Rollback
 	public void testUpdateDifficulty() {
-		Difficulty difficulty = this.createDifficulty("Hard", 1.0);
+		Difficulty difficulty = this.createDifficulty("Hard", 3);
 		difficulty.setName("Medium");
-		difficulty.setRate(0.66);
+		difficulty.setRate(2);
 		difficultyRepository.save(difficulty);
 
 		Optional<Difficulty> optionalUpdatedDifficulty = difficultyRepository.findByName("Medium");
@@ -94,29 +94,29 @@ public class DifficultyRepositoryTest {
 
 		difficulty = optionalUpdatedDifficulty.get();
 		assertThat(difficulty.getName()).isEqualTo("Medium");
-		assertThat(difficulty.getRate()).isEqualTo(0.66);
+		assertThat(difficulty.getRate()).isEqualTo(2);
 	}
 
 	// Testing delete functionalities:
 	@Test
 	@Rollback
 	public void testDeleteDifficulty() {
-		Difficulty difficultyHard = this.createDifficulty("Hard", 1.0);
+		Difficulty difficultyHard = this.createDifficulty("Hard", 3);
 		Long difficultyHardId = difficultyHard.getDifficultyId();
 
 		difficultyRepository.deleteById(difficultyHardId);
 		List<Difficulty> difficulties = (List<Difficulty>) difficultyRepository.findAll();
 		assertThat(difficulties).isEmpty();
 
-		this.createDifficulty("Hard", 1.0);
-		this.createDifficulty("Medium", 0.66);
+		this.createDifficulty("Hard", 3);
+		this.createDifficulty("Medium", 2);
 
 		difficultyRepository.deleteAll();
 		difficulties = (List<Difficulty>) difficultyRepository.findAll();
 		assertThat(difficulties).isEmpty();
 	}
 
-	private Difficulty createDifficulty(String name, Double rate) {
+	private Difficulty createDifficulty(String name, Integer rate) {
 		Difficulty newDifficulty = new Difficulty(name, rate);
 		difficultyRepository.save(newDifficulty);
 

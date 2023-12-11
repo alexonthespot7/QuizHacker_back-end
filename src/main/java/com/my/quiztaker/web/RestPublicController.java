@@ -71,7 +71,7 @@ public class RestPublicController {
 	private AuthenticationService jwtService;
 
 	@Autowired
-	AuthenticationManager authenticationManager;
+	private AuthenticationManager authenticationManager;
 
 	@Autowired
 	private JavaMailSender mailSender;

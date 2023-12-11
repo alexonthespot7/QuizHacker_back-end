@@ -126,19 +126,19 @@ public class AttemptRepositoryTest {
 		User user = this.createUser();
 		Quiz quiz1 = this.createQuiz(user);
 		Long quiz1Id = quiz1.getQuizId();
-		
+
 		Double quiz1Rating = attemptRepository.findQuizRating(quiz1Id);
 		assertThat(quiz1Rating).isNull();
 
 		this.createDefaultAttempt(quiz1, user);
 		quiz1Rating = attemptRepository.findQuizRating(quiz1Id);
 		assertThat(quiz1Rating).isEqualTo(5);
-		
+
 		this.createCustomAttempt(4, quiz1, user, 4);
 		quiz1Rating = attemptRepository.findQuizRating(quiz1Id);
-		assertThat(quiz1Rating).isBetween(4.0, 5.0);
+		assertThat(quiz1Rating).isEqualTo(4.5);
 	}
-	
+
 	@Test
 	@Rollback
 	public void testFindAttemptsByUserId() {
@@ -147,7 +147,7 @@ public class AttemptRepositoryTest {
 		Quiz quiz1 = this.createQuiz(user1);
 		Quiz quiz2 = this.createQuiz(user2);
 		Long user1Id = user1.getId();
-		
+
 		Integer attemptsForUser1 = attemptRepository.findAttemptsByUserId(user1Id);
 		assertThat(attemptsForUser1).isEqualTo(0);
 
@@ -157,7 +157,7 @@ public class AttemptRepositoryTest {
 		attemptsForUser1 = attemptRepository.findAttemptsByUserId(user1Id);
 		assertThat(attemptsForUser1).isEqualTo(2);
 	}
-	
+
 	@Test
 	@Rollback
 	public void testFindAttemptsForTheQuizByUserId() {
@@ -165,10 +165,10 @@ public class AttemptRepositoryTest {
 		User user2 = this.createCustomUser("user2", "user2@mail.com");
 		Quiz quiz1 = this.createQuiz(user1);
 		Quiz quiz2 = this.createQuiz(user2);
-		
+
 		Long quiz2Id = quiz2.getQuizId();
 		Long user1Id = user1.getId();
-		
+
 		Integer attemptsForUser1Quiz2 = attemptRepository.findAttemptsForTheQuizByUserId(user1Id, quiz2Id);
 		assertThat(attemptsForUser1Quiz2).isEqualTo(0);
 
@@ -191,7 +191,7 @@ public class AttemptRepositoryTest {
 
 		int customScore = 11;
 		int customRating = 1;
-		
+
 		defaultAttempt.setRating(customRating);
 		defaultAttempt.setScore(customScore);
 
@@ -247,7 +247,7 @@ public class AttemptRepositoryTest {
 
 		return newUser;
 	}
-	
+
 	private User createCustomUser(String username, String email) {
 		User customUser = new User(username, "passworHash", "USER", email, null, true);
 		userRepository.save(customUser);
@@ -256,7 +256,7 @@ public class AttemptRepositoryTest {
 	}
 
 	private Difficulty createDifficulty() {
-		Difficulty hardDifficulty = new Difficulty("Hard", 1.0);
+		Difficulty hardDifficulty = new Difficulty("Hard", 3);
 		difficultyRepository.save(hardDifficulty);
 
 		return hardDifficulty;

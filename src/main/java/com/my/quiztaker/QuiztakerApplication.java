@@ -23,9 +23,9 @@ public class QuiztakerApplication {
 	public CommandLineRunner tournamentDemo(DifficultyRepository difficultyRepository,
 			CategoryRepository categoryRepository, UserRepository userRepository) {
 		return (args) -> {
-			Difficulty hardDifficulty = new Difficulty("Hard", 1.0);
-			Difficulty mediumDifficulty = new Difficulty("Medium", 0.66);
-			Difficulty smallDifficulty = new Difficulty("Easy", 0.33);
+			Difficulty hardDifficulty = new Difficulty("Hard", 3);
+			Difficulty mediumDifficulty = new Difficulty("Medium", 2);
+			Difficulty smallDifficulty = new Difficulty("Easy", 1);
 			difficultyRepository.save(hardDifficulty);
 			difficultyRepository.save(mediumDifficulty);
 			difficultyRepository.save(smallDifficulty);

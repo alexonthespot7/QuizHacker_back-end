@@ -25,7 +25,7 @@ public class Difficulty {
 	private String name;
 	
 	@Column(nullable = false)
-	private Double rate;
+	private Integer rate;
 	
 	@JsonIgnore
 	@OneToMany(cascade = CascadeType.ALL, mappedBy = "difficulty")
@@ -33,7 +33,7 @@ public class Difficulty {
 	
 	public Difficulty() {}
 	
-	public Difficulty(String name, Double rate) {
+	public Difficulty(String name, Integer rate) {
 		this.name = name;
 		this.rate = rate;
 	}
@@ -54,11 +54,11 @@ public class Difficulty {
 		this.name = name;
 	}
 
-	public Double getRate() {
+	public Integer getRate() {
 		return rate;
 	}
 
-	public void setRate(Double rate) {
+	public void setRate(Integer rate) {
 		this.rate = rate;
 	}
 

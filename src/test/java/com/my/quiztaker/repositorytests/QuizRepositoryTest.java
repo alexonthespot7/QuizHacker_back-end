@@ -247,7 +247,7 @@ public class QuizRepositoryTest {
 	}
 
 	private Difficulty createDifficulty() {
-		Difficulty hardDifficulty = new Difficulty("Hard", 1.0);
+		Difficulty hardDifficulty = new Difficulty("Hard", 3);
 		difficultyRepository.save(hardDifficulty);
 
 		return hardDifficulty;

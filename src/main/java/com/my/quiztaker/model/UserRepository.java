@@ -19,13 +19,13 @@ public interface UserRepository extends CrudRepository<User, Long> {
 	@Query(value = "SELECT * FROM users WHERE verification_code = ?1", nativeQuery = true)
 	Optional<User> findByVerificationCode(String code);
 
-	@Query(value = "SELECT username, ROUND(CAST(SUM(att.score * dif.rate) AS numeric), 2) AS rating FROM users "
+	@Query(value = "SELECT username, SUM(att.score * dif.rate) AS rating FROM users "
 			+ "JOIN attempt AS att ON (att.user_id = users.id) JOIN quiz ON (quiz.quiz_id = att.quiz_id) "
 			+ "JOIN difficulty AS dif ON (dif.difficulty_id = quiz.difficulty_id) "
 			+ "GROUP BY username ORDER BY SUM(att.score * dif.rate) DESC, username ASC", nativeQuery = true)
 	List<UserPublic> findLeaderBoard();
 
-	@Query(value = "SELECT username, ROUND(CAST(SUM(att.score * dif.rate) AS numeric), 2) AS rating FROM users "
+	@Query(value = "SELECT username, SUM(att.score * dif.rate) AS rating FROM users "
 			+ "JOIN attempt AS att ON (att.user_id = users.id) JOIN quiz ON (quiz.quiz_id = att.quiz_id) "
 			+ "JOIN difficulty AS dif ON (dif.difficulty_id = quiz.difficulty_id) "
 			+ "WHERE id = ?1 GROUP BY username", nativeQuery = true)

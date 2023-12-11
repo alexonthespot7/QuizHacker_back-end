@@ -140,8 +140,8 @@ public class UserRepositoryTest {
 		usersLeaderBoard = userRepository.findLeaderBoard();
 		assertThat(usersLeaderBoard).hasSize(0);
 
-		Quiz quizOfUser1 = this.createQuiz(user1);
-		Quiz quizOfUser2 = this.createQuiz(user2);
+		Quiz quizOfUser1 = this.createQuizWithHardDifficulty(user1);
+		Quiz quizOfUser2 = this.createQuizWithHardDifficulty(user2);
 
 		this.addRating(user1, quizOfUser2, 8);
 		this.addRating(user2, quizOfUser1, 5);
@@ -170,8 +170,8 @@ public class UserRepositoryTest {
 		User user2 = this.createVerifiedUser("aUser2", "user2@mail.com");
 		Long user2Id = user2.getId();
 
-		Quiz quizOfUser1 = this.createQuiz(user1);
-		Quiz quizOfUser2 = this.createQuiz(user2);
+		Quiz quizOfUser1 = this.createQuizWithHardDifficulty(user1);
+		Quiz quizOfUser2 = this.createQuizWithHardDifficulty(user2);
 
 		this.addRating(user1, quizOfUser2, 8);
 		this.addRating(user2, quizOfUser1, 5);
@@ -181,8 +181,35 @@ public class UserRepositoryTest {
 		assertThat(userPublic1).isNotNull();
 		assertThat(userPublic2).isNotNull();
 
-		assertThat(userPublic1.getRating()).isEqualTo(8);
-		assertThat(userPublic2.getRating()).isEqualTo(5);
+		assertThat(userPublic1.getRating()).isEqualTo(8 * 3);
+		assertThat(userPublic2.getRating()).isEqualTo(5 * 3);
+	}
+	
+	@Test
+	@Rollback
+	public void testFindRatingByUserIdMedium() {
+		User user1 = this.createVerifiedUser("user1", "user1@mail.com");
+		Long user1Id = user1.getId();
+
+		UserPublic userPublic1 = userRepository.findRatingByUserId(user1Id);
+		assertThat(userPublic1).isNull();
+
+		User user2 = this.createVerifiedUser("aUser2", "user2@mail.com");
+		Long user2Id = user2.getId();
+
+		Quiz quizOfUser1 = this.createQuizWithMidDifficulty(user1);
+		Quiz quizOfUser2 = this.createQuizWithMidDifficulty(user2);
+
+		this.addRating(user1, quizOfUser2, 8);
+		this.addRating(user2, quizOfUser1, 5);
+
+		userPublic1 = userRepository.findRatingByUserId(user1Id);
+		UserPublic userPublic2 = userRepository.findRatingByUserId(user2Id);
+		assertThat(userPublic1).isNotNull();
+		assertThat(userPublic2).isNotNull();
+
+		assertThat(userPublic1.getRating()).isEqualTo(8 * 2);
+		assertThat(userPublic2.getRating()).isEqualTo(5 * 2);
 	}
 
 	// Testing update functionalities:
@@ -240,10 +267,21 @@ public class UserRepositoryTest {
 		attemptRepository.save(newAttempt);
 	}
 
-	private Quiz createQuiz(User user) {
+	private Quiz createQuizWithHardDifficulty(User user) {
 		Category category = this.createCategory();
 
-		Difficulty difficulty = this.createDifficulty();
+		Difficulty difficulty = this.createHardDifficulty();
+
+		Quiz newQuiz = new Quiz(user, category, difficulty);
+		quizRepository.save(newQuiz);
+
+		return newQuiz;
+	}
+	
+	private Quiz createQuizWithMidDifficulty(User user) {
+		Category category = this.createCategory();
+
+		Difficulty difficulty = this.createMediumDifficulty();
 
 		Quiz newQuiz = new Quiz(user, category, difficulty);
 		quizRepository.save(newQuiz);
@@ -258,11 +296,18 @@ public class UserRepositoryTest {
 		attemptRepository.deleteAll();
 	}
 
-	private Difficulty createDifficulty() {
-		Difficulty hardDifficulty = new Difficulty("Hard", 1.0);
+	private Difficulty createHardDifficulty() {
+		Difficulty hardDifficulty = new Difficulty("Hard", 3);
 		difficultyRepository.save(hardDifficulty);
 
 		return hardDifficulty;
+	}
+	
+	private Difficulty createMediumDifficulty() {
+		Difficulty mediumDifficulty = new Difficulty("Medium", 2);
+		difficultyRepository.save(mediumDifficulty);
+
+		return mediumDifficulty;
 	}
 
 	private Category createCategory() {
