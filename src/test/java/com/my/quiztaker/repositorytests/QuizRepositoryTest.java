@@ -187,6 +187,36 @@ public class QuizRepositoryTest {
 		assertThat(publishedQuizzes).hasSize(1);
 	}
 	
+	@Test
+	@Rollback
+	public void testFindQuizzesByUserId() {
+		User user1 = this.createDefaultUser();
+		Long user1Id = user1.getId();
+		
+		List<Quiz> user1Quizzes = quizRepository.findQuizzesByUserId(user1Id);
+		assertThat(user1Quizzes).isEmpty();
+		
+		Difficulty difficulty = this.createDifficulty();
+		Category category = this.createCategory();
+		Quiz quiz1 = this.createDefaultQuiz(user1, difficulty, category);
+		this.createDefaultQuiz(user1, difficulty, category);
+		
+		user1Quizzes = quizRepository.findQuizzesByUserId(user1Id);
+		assertThat(user1Quizzes).hasSize(2);
+		
+		User user2 = this.createCustomUser("user2", "user2@mail.com");
+		this.createDefaultQuiz(user2, difficulty, category);
+		
+		user1Quizzes = quizRepository.findQuizzesByUserId(user1Id);
+		assertThat(user1Quizzes).hasSize(2);
+		
+		quiz1.setStatus("Published");
+		quizRepository.save(quiz1);
+		
+		user1Quizzes = quizRepository.findQuizzesByUserId(user1Id);
+		assertThat(user1Quizzes).hasSize(2);
+	}
+	
 	// Testing update:
 	@Test
 	@Rollback
