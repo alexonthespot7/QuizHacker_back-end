@@ -1,5 +1,6 @@
 package com.my.quiztaker.web;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.my.quiztaker.MyUser;
 import com.my.quiztaker.forms.PersonalInfo;
+import com.my.quiztaker.forms.QuizRatingQuestions;
 import com.my.quiztaker.forms.UserPublic;
 import com.my.quiztaker.model.AttemptRepository;
 import com.my.quiztaker.model.CategoryRepository;
@@ -127,7 +129,42 @@ public class RestAuthenticatedController {
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
 		}
 	}
-	
+
+	@RequestMapping("/quizzesbyuser/{userid}")
+	@PreAuthorize("isAuthenticated()")
+	public @ResponseBody List<QuizRatingQuestions> getQuizzesAuth(@PathVariable("userid") Long userId,
+			Authentication auth) {
+		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
+			MyUser myUser = (MyUser) auth.getPrincipal();
+			Optional<User> optUser = urepository.findByUsername(myUser.getUsername());
+
+			if (optUser.isPresent() && optUser.get().getId() == userId) {
+				List<Quiz> quizzesOfOthers = quizRepository.findPublishedQuizzesFromOtherUsers(userId);
+				Double rating;
+				QuizRatingQuestions quizRatingQuestions;
+				Integer questions;
+
+				List<QuizRatingQuestions> quizRatingsQuestionss = new ArrayList<QuizRatingQuestions>();
+
+				for (Quiz quiz : quizzesOfOthers) {
+					if (attRepository.findAttemptsForTheQuizByUserId(userId, quiz.getQuizId()) == 0) {
+						rating = attRepository.findQuizRating(quiz.getQuizId());
+						questions = questRepository.findQuestionsByQuizId(quiz.getQuizId()).size();
+						quizRatingQuestions = new QuizRatingQuestions(quiz, rating, questions);
+
+						quizRatingsQuestionss.add(quizRatingQuestions);
+					}
+				}
+
+				return quizRatingsQuestionss;
+			} else {
+				throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
+			}
+		} else {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
+		}
+	}
+
 	private int findPosition(String username, List<UserPublic> leaders) {
 		int position = -1;
 		UserPublic userPublic;

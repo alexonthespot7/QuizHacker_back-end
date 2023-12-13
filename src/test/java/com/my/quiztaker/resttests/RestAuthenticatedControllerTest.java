@@ -97,7 +97,7 @@ public class RestAuthenticatedControllerTest {
 		User user1 = userRepository.findByUsername("user1").get();
 		Long user1Id = user1.getId();
 
-		List<Quiz> quizzes = quizRepository.findQuizzesFromOtherUsers(user1Id);
+		List<Quiz> quizzes = quizRepository.findPublishedQuizzesFromOtherUsers(user1Id);
 		Quiz quizNotFromUser1 = quizzes.get(0);
 		Long quizNotFromUser1Id = quizNotFromUser1.getQuizId();
 		String notUser1QuizURI = requestURI + quizNotFromUser1Id;
@@ -195,17 +195,17 @@ public class RestAuthenticatedControllerTest {
 				.andExpect(MockMvcResultMatchers.jsonPath("$.username").value("user1"))
 				.andExpect(MockMvcResultMatchers.jsonPath("$.score").value(0));
 	}
-	
+
 	@Test
 	@Rollback
 	public void testGetLeaderboardAuthWithRatingCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/users/";
-				
+
 		User user1 = userRepository.findByUsername("user1").get();
 		Long user1Id = user1.getId();
 		String requestURINoRating = requestURI + user1Id;
-		
-		List<Quiz> quizzesForUser1 = quizRepository.findQuizzesFromOtherUsers(user1Id);
+
+		List<Quiz> quizzesForUser1 = quizRepository.findPublishedQuizzesFromOtherUsers(user1Id);
 		Quiz quizForUser1 = quizzesForUser1.get(0);
 		this.createAttempt(user1, quizForUser1);
 
@@ -215,8 +215,77 @@ public class RestAuthenticatedControllerTest {
 				.andExpect(MockMvcResultMatchers.jsonPath("$.username").value("user1"))
 				.andExpect(MockMvcResultMatchers.jsonPath("$.score").value(5 * 1));
 	}
-	
-	
+
+	@Test
+	@Rollback
+	public void testGetQuizzesAuthIdMissmatchCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/quizzesbyuser/";
+
+		User user2 = userRepository.findByUsername("user2").get();
+		Long user2Id = user2.getId();
+		String requestURIIdMissmatch = requestURI + user2Id;
+
+		mockMvc.perform(get(requestURIIdMissmatch).header("Authorization", jwtToken))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	@Rollback
+	public void testGetQuizzesAuthGoodCases() throws Exception {
+		String requestURI = END_POINT_PATH + "/quizzesbyuser/";
+
+		User user1 = userRepository.findByUsername("user1").get();
+		Long user1Id = user1.getId();
+		String requestURIGood = requestURI + user1Id;
+
+		mockMvc.perform(get(requestURIGood).header("Authorization", jwtToken)).andExpect(status().isOk())
+				.andExpect(MockMvcResultMatchers.jsonPath("$.size()").value(1))
+				.andExpect(MockMvcResultMatchers.jsonPath("$[0].rating").value(5));
+
+		List<Quiz> quizzesOfOthers = quizRepository.findPublishedQuizzesFromOtherUsers(user1Id);
+		Quiz quizForUser1 = quizzesOfOthers.get(0);
+
+		this.createAttempt(user1, quizForUser1);
+
+		mockMvc.perform(get(requestURIGood).header("Authorization", jwtToken)).andExpect(status().isOk())
+				.andExpect(MockMvcResultMatchers.jsonPath("$.size()").value(0));
+	}
+
+	@Test
+	@Rollback
+	public void testGetPersonalQuizzesWrongIdCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/personalquizzes/";
+
+		User user2 = userRepository.findByUsername("user2").get();
+		Long user2Id = user2.getId();
+		String requestURIWrongId = requestURI + user2Id;
+
+		mockMvc.perform(get(requestURIWrongId).header("Authorization", jwtToken)).andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	@Rollback
+	public void testGetPersonalQuizzesGoodCases() throws Exception {
+		String requestURI = END_POINT_PATH + "/personalquizzes/";
+
+		User user1 = userRepository.findByUsername("user1").get();
+		Long user1Id = user1.getId();
+		String requestURIGood = requestURI + user1Id;
+
+		mockMvc.perform(get(requestURIGood).header("Authorization", jwtToken)).andExpect(status().isOk())
+				.andExpect(MockMvcResultMatchers.jsonPath("$.size()").value(2))
+				.andExpect(MockMvcResultMatchers.jsonPath("$[0].rating").value(5));
+
+		List<Quiz> quizzes = (List<Quiz>) quizRepository.findAll();
+		for (Quiz quiz : quizzes) {
+			quiz.setStatus("Published");
+			quizRepository.save(quiz);
+		}
+
+		mockMvc.perform(get(requestURIGood).header("Authorization", jwtToken)).andExpect(status().isOk())
+				.andExpect(MockMvcResultMatchers.jsonPath("$.size()").value(2))
+				.andExpect(MockMvcResultMatchers.jsonPath("$[0].rating").value(5));
+	}
 
 	private void getToken() throws Exception {
 		String requestURI = END_POINT_PATH + "/login";

@@ -74,106 +74,6 @@ public class MainController {
 
 	
 
-	@RequestMapping("/users/{userid}")
-	@PreAuthorize("isAuthenticated()")
-	public @ResponseBody PersonalInfo getLeaderboardAuth(@PathVariable("userid") Long userId, Authentication auth) {
-		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
-			MyUser myUser = (MyUser) auth.getPrincipal();
-			Optional<User> optUser = urepository.findByUsername(myUser.getUsername());
-			if (optUser.isPresent() && optUser.get().getId() == userId) {
-				UserPublic userPublic = urepository.findRatingByUserId(userId);
-				
-				// if user doesn't have any attempts
-				if (userPublic == null) {
-					return new PersonalInfo(optUser.get().getUsername(), optUser.get().getEmail(), 0,
-							attRepository.findAttemptsByUserId(userId), -1);
-				}
-
-				String username = optUser.get().getUsername();
-				List<UserPublic> leaders = urepository.findLeaderBoard();
-				int position = this.findPosition(username, leaders);
-
-				return new PersonalInfo(optUser.get().getUsername(), optUser.get().getEmail(), userPublic.getRating(),
-						attRepository.findAttemptsByUserId(userId), position);
-			} else {
-				throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
-			}
-		} else {
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
-		}
-	}
-
-	@RequestMapping("/usersauth/{userid}")
-	@PreAuthorize("isAuthenticated()")
-	public @ResponseBody LeaderboardAuthorized leaderboardAuthorized(@PathVariable("userid") Long userId,
-			Authentication auth) {
-		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
-			MyUser myUser = (MyUser) auth.getPrincipal();
-			Optional<User> optUser = urepository.findByUsername(myUser.getUsername());
-
-			if (optUser.isPresent() && optUser.get().getId() == userId) {
-				List<UserPublic> leaders = urepository.findLeaderBoard();
-				String username = optUser.get().getUsername();
-
-				int position = this.findPosition(username, leaders);
-
-				if (leaders.size() > LIMIT) {
-					leaders = leaders.subList(0, LIMIT);
-				}
-
-				if (position > LIMIT) {
-					UserPublic userRow = urepository.findRatingByUserId(userId);
-					leaders.add(userRow);
-				}
-
-				if (urepository.findRatingByUserId(userId) == null)
-					return new LeaderboardAuthorized(leaders, -1);
-
-				return new LeaderboardAuthorized(leaders, position);
-			} else {
-				return null;
-			}
-		} else {
-			return null;
-		}
-	}
-
-	@RequestMapping("/quizzesbyuser/{userid}")
-	@PreAuthorize("isAuthenticated()")
-	public @ResponseBody List<QuizRatingQuestions> quizListRestAuthenticated(@PathVariable("userid") Long userId,
-			Authentication auth) {
-		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
-			MyUser myUser = (MyUser) auth.getPrincipal();
-			Optional<User> optUser = urepository.findByUsername(myUser.getUsername());
-
-			if (optUser.isPresent() && optUser.get().getId() == userId) {
-				List<Quiz> quizzes = (List<Quiz>) quizRepository.findAllPublished();
-				Double rating;
-				QuizRatingQuestions quizRatingQuestions;
-				Integer questions;
-
-				List<QuizRatingQuestions> quizRatingsQuestionss = new ArrayList<QuizRatingQuestions>();
-
-				for (Quiz quiz : quizzes) {
-					if (quiz.getUser().getId() != userId
-							&& attRepository.findAttemptsForTheQuizByUserId(userId, quiz.getQuizId()) == 0) {
-						rating = attRepository.findQuizRating(quiz.getQuizId());
-						questions = questRepository.findQuestionsByQuizId(quiz.getQuizId()).size();
-						quizRatingQuestions = new QuizRatingQuestions(quiz, rating, questions);
-
-						quizRatingsQuestionss.add(quizRatingQuestions);
-					}
-				}
-
-				return quizRatingsQuestionss;
-			} else {
-				return null;
-			}
-		} else {
-			return null;
-		}
-	}
-
 	@RequestMapping("/personalquizzes/{userid}")
 	@PreAuthorize("isAuthenticated()")
 	public @ResponseBody List<QuizRatingQuestions> getPersonalQuizzes(@PathVariable("userid") Long userId,
@@ -202,10 +102,10 @@ public class MainController {
 
 				return quizRatingsQuestionss;
 			} else {
-				return null;
+				throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
 			}
 		} else {
-			return null;
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
 		}
 	}
 
