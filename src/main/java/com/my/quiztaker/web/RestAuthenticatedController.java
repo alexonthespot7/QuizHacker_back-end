@@ -21,12 +21,15 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.my.quiztaker.MyUser;
+import com.my.quiztaker.forms.AttemptAnswer;
+import com.my.quiztaker.forms.AttemptForm;
 import com.my.quiztaker.forms.PersonalInfo;
 import com.my.quiztaker.forms.QuizRatingQuestions;
 import com.my.quiztaker.forms.QuizUpdate;
 import com.my.quiztaker.forms.UserPublic;
 import com.my.quiztaker.model.Answer;
 import com.my.quiztaker.model.AnswerRepository;
+import com.my.quiztaker.model.Attempt;
 import com.my.quiztaker.model.AttemptRepository;
 import com.my.quiztaker.model.Category;
 import com.my.quiztaker.model.CategoryRepository;
@@ -370,6 +373,209 @@ public class RestAuthenticatedController {
 		}
 
 		return new ResponseEntity<>("Everything was saved successfully", HttpStatus.OK);
+	}
+
+	@RequestMapping(value = "/deletequestion/{questionid}", method = RequestMethod.DELETE)
+	@PreAuthorize("isAuthenticated()")
+	public ResponseEntity<?> deleteQuestionById(@PathVariable("questionid") Long questionId, Authentication auth) {
+		Optional<Question> optQuestion = questionRepository.findById(questionId);
+		if (!optQuestion.isPresent())
+			return new ResponseEntity<>("There is no such question", HttpStatus.BAD_REQUEST); // 400
+
+		Question question = optQuestion.get();
+
+		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
+			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401
+
+		MyUser myUser = (MyUser) auth.getPrincipal();
+		Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
+
+		if (!optUser.isPresent())
+			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401;
+
+		User user = optUser.get();
+
+		if (user.getId() != question.getQuiz().getUser().getId())
+			return new ResponseEntity<>("You can't change someone else's quiz", HttpStatus.UNAUTHORIZED); // 401
+
+		questionRepository.deleteById(questionId);
+
+		return new ResponseEntity<>("Question was deleted successfully", HttpStatus.OK);
+	}
+
+	@RequestMapping(value = "/publishquiz/{quizid}", method = RequestMethod.POST)
+	@PreAuthorize("isAuthenticated()")
+	public ResponseEntity<?> publishQuiz(@PathVariable("quizid") Long quizId, Authentication auth) {
+		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
+			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED);
+
+		MyUser myUser = (MyUser) auth.getPrincipal();
+		Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
+		Optional<Quiz> optQuiz = quizRepository.findById(quizId);
+
+		if (!optUser.isPresent())
+			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED);
+
+		User user = optUser.get();
+
+		if (!optQuiz.isPresent())
+			return new ResponseEntity<>("The quiz was not found for provided ID", HttpStatus.BAD_REQUEST);
+
+		Quiz quiz = optQuiz.get();
+
+		if (user.getId() != quiz.getUser().getId())
+			return new ResponseEntity<>("You can't change someone else's quiz", HttpStatus.UNAUTHORIZED);
+
+		quiz.setStatus("Published");
+		quizRepository.save(quiz);
+
+		return new ResponseEntity<>("Quiz was published successfully", HttpStatus.OK);
+	}
+
+	@RequestMapping(value = "/sendattempt/{quizid}", method = RequestMethod.POST)
+	@PreAuthorize("isAuthenticated()")
+	public ResponseEntity<?> sendAttempt(@RequestBody AttemptForm attemptForm, @PathVariable("quizid") Long quizId,
+			Authentication auth) {
+		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
+			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED);
+
+		MyUser myUser = (MyUser) auth.getPrincipal();
+		Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
+		Optional<Quiz> optQuiz = quizRepository.findById(quizId);
+
+		if (!optUser.isPresent())
+			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED);
+
+		User user = optUser.get();
+
+		if (!optQuiz.isPresent())
+			return new ResponseEntity<>("Quiz was not found for provided ID", HttpStatus.BAD_REQUEST);
+
+		Quiz quiz = optQuiz.get();
+
+		if (quiz.getUser().getId() == user.getId())
+			return new ResponseEntity<>("It's impossible to send attempt for your own quiz", HttpStatus.CONFLICT); // 409
+
+		List<AttemptAnswer> attemptAnswers = attemptForm.getAttemptAnswers();
+		List<Question> questionsOfQuiz = quiz.getQuestions();
+
+		if (questionsOfQuiz.size() != attemptAnswers.size())
+			return new ResponseEntity<>(
+					"The amount of answers in the request body doesn't match the amount of questions in the quiz",
+					HttpStatus.BAD_REQUEST);
+
+		int score = 0;
+		Optional<Question> optionalQuestion;
+		Optional<Answer> optionalAnswer;
+		Question question;
+		Answer answer;
+		for (AttemptAnswer attemptAnswer : attemptAnswers) {
+			optionalQuestion = questionRepository.findById(attemptAnswer.getQuestionId());
+			if (!optionalQuestion.isPresent())
+				return new ResponseEntity<>("Question not found", HttpStatus.BAD_REQUEST);
+
+			question = optionalQuestion.get();
+			optionalAnswer = answerRepository.findById(attemptAnswer.getAnswerId());
+
+			if (!optionalAnswer.isPresent())
+				return new ResponseEntity<>("Answer not found", HttpStatus.BAD_REQUEST);
+
+			answer = optionalAnswer.get();
+
+			if (!answer.getQuestion().equals(question))
+				return new ResponseEntity<>("One or more answers don't match corresponding question",
+						HttpStatus.BAD_REQUEST);
+
+			if (question.getQuiz().getQuizId() != quizId)
+				return new ResponseEntity<>("Some of questions are not in the corresponding quiz",
+						HttpStatus.BAD_REQUEST);
+
+			if (answer.isCorrect())
+				score += 1;
+		}
+
+		Attempt attempt = new Attempt(score, quiz, user, attemptForm.getRating());
+
+		attemptRepository.save(attempt);
+
+		return ResponseEntity.ok().header(HttpHeaders.HOST, Integer.toString(score))
+				.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
+	}
+
+	@RequestMapping(value = "/deletequiz/{quizid}", method = RequestMethod.DELETE)
+	@PreAuthorize("isAuthenticated()")
+	public ResponseEntity<?> deleteQuizById(@PathVariable("quizid") Long quizId, Authentication auth) {
+		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
+			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401
+
+		MyUser myUser = (MyUser) auth.getPrincipal();
+		Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
+		Optional<Quiz> optQuiz = quizRepository.findById(quizId);
+
+		if (!optUser.isPresent())
+			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401;
+
+		User user = optUser.get();
+
+		if (!optQuiz.isPresent())
+			return new ResponseEntity<>("The quiz was not found for provided ID", HttpStatus.BAD_REQUEST);
+
+		Quiz quiz = optQuiz.get();
+
+		if (user.getId() != quiz.getUser().getId())
+			return new ResponseEntity<>("You can't delete someone else's quiz", HttpStatus.UNAUTHORIZED); // 401;
+
+		quizRepository.deleteById(quizId);
+
+		return new ResponseEntity<>("Quiz was deleted successfully", HttpStatus.OK);
+	}
+
+	@RequestMapping(value = "/getavatar/{userid}")
+	@PreAuthorize("isAuthenticated()")
+	public @ResponseBody String getAvatarByUserId(@PathVariable("userid") Long userId, Authentication auth) {
+
+		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authorization problems");
+
+		MyUser myUser = (MyUser) auth.getPrincipal();
+		Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
+
+		if (!optUser.isPresent())
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authorization problems");
+
+		User user = optUser.get();
+
+		if (user.getId() != userId)
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You can't get the avatarURL of other user");
+
+		return user.getAvatarUrl();
+
+	}
+
+	@RequestMapping(value = "/updateavatar/{userid}", method = RequestMethod.POST)
+	@PreAuthorize("isAuthenticated()")
+	public ResponseEntity<?> updateAvatarByUserId(@PathVariable("userid") Long userId, @RequestBody String url,
+			Authentication auth) {
+		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
+			return new ResponseEntity<>("Unauthorized", HttpStatus.UNAUTHORIZED);
+
+		MyUser myUser = (MyUser) auth.getPrincipal();
+		Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
+
+		if (!optUser.isPresent())
+			return new ResponseEntity<>("Unauthorized", HttpStatus.UNAUTHORIZED);
+
+		User user = optUser.get();
+
+		if (user.getId() != userId)
+			return new ResponseEntity<>("You can't change someone else's avatarUrl", HttpStatus.UNAUTHORIZED);
+
+		user.setAvatarUrl(url);
+
+		userRepository.save(user);
+
+		return new ResponseEntity<>("The avatar url was updated successfully", HttpStatus.OK);
+
 	}
 
 	private int findPosition(String username, List<UserPublic> leaders) {

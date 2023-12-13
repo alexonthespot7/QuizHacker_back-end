@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -31,8 +32,11 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.my.quiztaker.forms.AccountCredentials;
+import com.my.quiztaker.forms.AttemptAnswer;
+import com.my.quiztaker.forms.AttemptForm;
 import com.my.quiztaker.forms.QuizUpdate;
 import com.my.quiztaker.forms.SignupCredentials;
+import com.my.quiztaker.forms.UserPublic;
 import com.my.quiztaker.model.Answer;
 import com.my.quiztaker.model.AnswerRepository;
 import com.my.quiztaker.model.Attempt;
@@ -529,6 +533,492 @@ public class RestAuthenticatedControllerTest {
 		String requestURIGood = requestURI + quizOfUser1ToUpdateId;
 		mockMvc.perform(post(requestURIGood).header("Authorization", jwtToken).contentType(MediaType.APPLICATION_JSON)
 				.content(requestBody)).andExpect(status().isOk());
+
+		quizzesUser1 = quizRepository.findQuizzesByUserId(user1Id);
+		Quiz quizOfUser1Updated = quizzesUser1.get(0);
+
+		assertThat(quizOfUser1Updated.getQuestions()).hasSize(3);
+		assertThat(quizOfUser1Updated.getQuestions().get(0).getText()).isEqualTo("Custom question");
+	}
+
+	@Test
+	@Rollback
+	public void testDeleteQuestionByIdNotFoundCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/deletequestion/";
+
+		String requestURINotFound = requestURI + Long.valueOf(100);
+		mockMvc.perform(delete(requestURINotFound).header("Authorization", jwtToken)).andExpect(status().isBadRequest())
+				.andExpect(content().string("There is no such question"));
+	}
+
+	@Test
+	@Rollback
+	public void testDeleteQuestionByIdOtherUserQuizCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/deletequestion/";
+
+		User user2 = userRepository.findByUsername("user2").get();
+		List<Quiz> quizzesOfUser2 = user2.getQuizzes();
+		Quiz quiz1OfUser2 = quizzesOfUser2.get(0);
+		List<Question> questionsOfQuiz1OfUser2 = quiz1OfUser2.getQuestions();
+		Question question1OfQuiz1OfUser2 = questionsOfQuiz1OfUser2.get(0);
+		Long question1OfQuiz1OfUser2Id = question1OfQuiz1OfUser2.getQuestionId();
+
+		String requestURIOtherUserQuiz = requestURI + question1OfQuiz1OfUser2Id;
+		mockMvc.perform(delete(requestURIOtherUserQuiz).header("Authorization", jwtToken))
+				.andExpect(status().isUnauthorized())
+				.andExpect(content().string("You can't change someone else's quiz"));
+	}
+
+	@Test
+	@Rollback
+	public void testDeleteQuestionByIdGoodCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/deletequestion/";
+
+		User user1 = userRepository.findByUsername("user1").get();
+		List<Quiz> quizzesOfUser1 = user1.getQuizzes();
+		Quiz quiz1OfUser1 = quizzesOfUser1.get(0);
+		List<Question> questionsOfQuiz1OfUser1 = quiz1OfUser1.getQuestions();
+		Question question1OfQuiz1OfUser1 = questionsOfQuiz1OfUser1.get(0);
+		Long question1OfQuiz1OfUser1Id = question1OfQuiz1OfUser1.getQuestionId();
+
+		String requestURINotFound = requestURI + question1OfQuiz1OfUser1Id;
+		mockMvc.perform(delete(requestURINotFound).header("Authorization", jwtToken)).andExpect(status().isOk());
+
+		Optional<Question> optionalQuestionNull = questionRepository.findById(question1OfQuiz1OfUser1Id);
+		assertThat(optionalQuestionNull).isNotPresent();
+	}
+
+	@Test
+	@Rollback
+	public void testPublishQuizNotFoundCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/publishquiz/";
+
+		String requestURINotFound = requestURI + Long.valueOf(100);
+		mockMvc.perform(post(requestURINotFound).header("Authorization", jwtToken)).andExpect(status().isBadRequest())
+				.andExpect(content().string("The quiz was not found for provided ID"));
+	}
+
+	@Test
+	@Rollback
+	public void testPublishQuizOtherUserQuizCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/publishquiz/";
+
+		User user2 = userRepository.findByUsername("user2").get();
+		List<Quiz> quizzesOfUser2 = user2.getQuizzes();
+		Quiz quiz1OfUser2 = quizzesOfUser2.get(0);
+		Long quiz1OfUser2Id = quiz1OfUser2.getQuizId();
+
+		String requestURIOtherUserQuiz = requestURI + quiz1OfUser2Id;
+		mockMvc.perform(post(requestURIOtherUserQuiz).header("Authorization", jwtToken))
+				.andExpect(status().isUnauthorized())
+				.andExpect(content().string("You can't change someone else's quiz"));
+	}
+
+	@Test
+	@Rollback
+	public void testPublishQuizGoodCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/publishquiz/";
+
+		User user1 = userRepository.findByUsername("user1").get();
+		List<Quiz> quizzesOfUser1 = user1.getQuizzes();
+
+		Quiz createdQuizOfUser1 = null;
+
+		for (Quiz quiz : quizzesOfUser1) {
+			if (quiz.getStatus().equals("Created")) {
+				createdQuizOfUser1 = quiz;
+				break;
+			}
+		}
+
+		Long createdQuizOfUser1Id = createdQuizOfUser1.getQuizId();
+
+		String requestURINotFound = requestURI + createdQuizOfUser1Id;
+		mockMvc.perform(post(requestURINotFound).header("Authorization", jwtToken)).andExpect(status().isOk());
+
+		Optional<Quiz> optionalPublishedQuiz = quizRepository.findById(createdQuizOfUser1Id);
+		assertThat(optionalPublishedQuiz).isPresent();
+
+		Quiz publishedQuiz = optionalPublishedQuiz.get();
+		assertThat(publishedQuiz.getStatus()).isEqualTo("Published");
+	}
+
+	@Test
+	@Rollback
+	public void testSendAttemptQuizNotFoundCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/sendattempt/";
+
+		AttemptForm attemptFormQuizNotFound = new AttemptForm();
+		String requestBodyQuizNotFound = objectMapper.writeValueAsString(attemptFormQuizNotFound);
+		String requestURINotFound = requestURI + Long.valueOf(100);
+		mockMvc.perform(post(requestURINotFound).header("Authorization", jwtToken)
+				.contentType(MediaType.APPLICATION_JSON).content(requestBodyQuizNotFound))
+				.andExpect(status().isBadRequest()).andExpect(content().string("Quiz was not found for provided ID"));
+	}
+
+	@Test
+	@Rollback
+	public void testSendAttemptOwnQuizCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/sendattempt/";
+
+		User user1 = userRepository.findByUsername("user1").get();
+		Quiz quiz1User1 = user1.getQuizzes().get(0);
+		Long quiz1User1Id = quiz1User1.getQuizId();
+
+		AttemptForm attemptFormOwnQuiz = new AttemptForm();
+		String requestBodyOwnQuiz = objectMapper.writeValueAsString(attemptFormOwnQuiz);
+		String requestURIOwnQuiz = requestURI + quiz1User1Id;
+		mockMvc.perform(post(requestURIOwnQuiz).header("Authorization", jwtToken)
+				.contentType(MediaType.APPLICATION_JSON).content(requestBodyOwnQuiz)).andExpect(status().isConflict())
+				.andExpect(content().string("It's impossible to send attempt for your own quiz"));
+	}
+
+	@Test
+	@Rollback
+	public void testSendAttemptAnswersSizeMissmatchCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/sendattempt/";
+
+		User user2 = userRepository.findByUsername("user2").get();
+		Quiz quiz1User2 = user2.getQuizzes().get(0);
+		Long quiz1User2Id = quiz1User2.getQuizId();
+
+		List<AttemptAnswer> attemptAnswers = new ArrayList<AttemptAnswer>();
+		AttemptAnswer attemptAnswer = new AttemptAnswer(Long.valueOf(1), Long.valueOf(2));
+		attemptAnswers.add(attemptAnswer);
+
+		AttemptForm attemptFormAnswersSizeMissmatch = new AttemptForm(attemptAnswers, 5);
+
+		String requestBodyAnswersSizeMissmatch = objectMapper.writeValueAsString(attemptFormAnswersSizeMissmatch);
+		String requestURIAnswersSizeMissmatch = requestURI + quiz1User2Id;
+		mockMvc.perform(post(requestURIAnswersSizeMissmatch).header("Authorization", jwtToken)
+				.contentType(MediaType.APPLICATION_JSON).content(requestBodyAnswersSizeMissmatch))
+				.andExpect(status().isBadRequest()).andExpect(content().string(
+						"The amount of answers in the request body doesn't match the amount of questions in the quiz"));
+	}
+
+	@Test
+	@Rollback
+	public void testSendAttemptQuestionNotFoundCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/sendattempt/";
+
+		User user2 = userRepository.findByUsername("user2").get();
+		Quiz quiz1User2 = user2.getQuizzes().get(0);
+		Long quiz1User2Id = quiz1User2.getQuizId();
+
+		List<Question> questionsOfQuiz1User2 = quiz1User2.getQuestions();
+
+		List<AttemptAnswer> attemptAnswers = this.createCorrectAttemptAnswersList(questionsOfQuiz1User2);
+
+		attemptAnswers.get(0).setQuestionId(Long.valueOf(200));
+
+		AttemptForm attemptFormQuestionNotFound = new AttemptForm(attemptAnswers, 5);
+
+		String requestBodyQuestionNotFound = objectMapper.writeValueAsString(attemptFormQuestionNotFound);
+		String requestURIQuestionNotFound = requestURI + quiz1User2Id;
+		mockMvc.perform(post(requestURIQuestionNotFound).header("Authorization", jwtToken)
+				.contentType(MediaType.APPLICATION_JSON).content(requestBodyQuestionNotFound))
+				.andExpect(status().isBadRequest()).andExpect(content().string("Question not found"));
+	}
+
+	@Test
+	@Rollback
+	public void testSendAttemptAnswerNotFoundCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/sendattempt/";
+
+		User user2 = userRepository.findByUsername("user2").get();
+		Quiz quiz1User2 = user2.getQuizzes().get(0);
+		Long quiz1User2Id = quiz1User2.getQuizId();
+
+		List<Question> questionsOfQuiz1User2 = quiz1User2.getQuestions();
+
+		List<AttemptAnswer> attemptAnswers = this.createCorrectAttemptAnswersList(questionsOfQuiz1User2);
+
+		attemptAnswers.get(0).setAnswerId(Long.valueOf(200));
+
+		AttemptForm attemptFormAnswerNotFound = new AttemptForm(attemptAnswers, 5);
+
+		String requestBodyAnswerNotFound = objectMapper.writeValueAsString(attemptFormAnswerNotFound);
+		String requestURIAnswerNotFound = requestURI + quiz1User2Id;
+		mockMvc.perform(post(requestURIAnswerNotFound).header("Authorization", jwtToken)
+				.contentType(MediaType.APPLICATION_JSON).content(requestBodyAnswerNotFound))
+				.andExpect(status().isBadRequest()).andExpect(content().string("Answer not found"));
+	}
+
+	@Test
+	@Rollback
+	public void testSendAttemptAnswersQuestionDontMatchCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/sendattempt/";
+
+		User user2 = userRepository.findByUsername("user2").get();
+		Quiz quiz1User2 = user2.getQuizzes().get(0);
+		Long quiz1User2Id = quiz1User2.getQuizId();
+
+		List<Question> questionsOfQuiz1User2 = quiz1User2.getQuestions();
+
+		List<AttemptAnswer> attemptAnswers = this.createCorrectAttemptAnswersList(questionsOfQuiz1User2);
+
+		AttemptAnswer attemptAnswerQuestion2 = attemptAnswers.get(1);
+
+		attemptAnswers.get(0).setAnswerId(attemptAnswerQuestion2.getAnswerId());
+
+		AttemptForm attemptFormAnswersQuestionDontMatch = new AttemptForm(attemptAnswers, 5);
+
+		String requestBodyAnswersQuestionDontMatch = objectMapper
+				.writeValueAsString(attemptFormAnswersQuestionDontMatch);
+		String requestURIAnswersQuestionDontMatch = requestURI + quiz1User2Id;
+		mockMvc.perform(post(requestURIAnswersQuestionDontMatch).header("Authorization", jwtToken)
+				.contentType(MediaType.APPLICATION_JSON).content(requestBodyAnswersQuestionDontMatch))
+				.andExpect(status().isBadRequest())
+				.andExpect(content().string("One or more answers don't match corresponding question"));
+	}
+
+	@Test
+	@Rollback
+	public void testSendAttemptQuestionDontMatchQuizCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/sendattempt/";
+
+		User user2 = userRepository.findByUsername("user2").get();
+		Quiz quiz1User2 = user2.getQuizzes().get(0);
+		Quiz quiz2User2 = user2.getQuizzes().get(1);
+		Long quiz1User2Id = quiz1User2.getQuizId();
+
+		List<Question> questionsOfQuiz2User2 = quiz2User2.getQuestions();
+		List<Question> questionsOfQuiz1User2 = quiz1User2.getQuestions();
+
+		List<AttemptAnswer> attemptAnswers = this.createCorrectAttemptAnswersList(questionsOfQuiz1User2);
+
+		Question question1OfQuiz2User2 = questionsOfQuiz2User2.get(0);
+		Long question1OfQuiz2User2Id = question1OfQuiz2User2.getQuestionId();
+
+		attemptAnswers.get(0).setQuestionId(question1OfQuiz2User2Id);
+		attemptAnswers.get(0).setAnswerId(question1OfQuiz2User2.getAnswers().get(0).getAnswerId());
+
+		AttemptForm attemptFormQuestionDontMatchQuiz = new AttemptForm(attemptAnswers, 5);
+
+		String requestBodyQuestionDontMatchQuiz = objectMapper.writeValueAsString(attemptFormQuestionDontMatchQuiz);
+		String requestURIQuestionDontMatchQuiz = requestURI + quiz1User2Id;
+		mockMvc.perform(post(requestURIQuestionDontMatchQuiz).header("Authorization", jwtToken)
+				.contentType(MediaType.APPLICATION_JSON).content(requestBodyQuestionDontMatchQuiz))
+				.andExpect(status().isBadRequest())
+				.andExpect(content().string("Some of questions are not in the corresponding quiz"));
+	}
+
+	@Test
+	@Rollback
+	public void testSendAttemptAllCorrectGoodCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/sendattempt/";
+
+		User user2 = userRepository.findByUsername("user2").get();
+		Quiz quiz1User2 = user2.getQuizzes().get(0);
+		Long quiz1User2Id = quiz1User2.getQuizId();
+
+		List<Question> questionsOfQuiz1User2 = quiz1User2.getQuestions();
+
+		List<AttemptAnswer> attemptAnswers = this.createCorrectAttemptAnswersList(questionsOfQuiz1User2);
+
+		AttemptForm attemptForm = new AttemptForm(attemptAnswers, 5);
+
+		String requestBody = objectMapper.writeValueAsString(attemptForm);
+		String requestURIGood = requestURI + quiz1User2Id;
+		mockMvc.perform(post(requestURIGood).header("Authorization", jwtToken).contentType(MediaType.APPLICATION_JSON)
+				.content(requestBody)).andExpect(status().isOk());
+
+		Difficulty quiz1User2Difficulty = quiz1User2.getDifficulty();
+		Integer rate = quiz1User2Difficulty.getRate();
+		Integer questionsSize = questionsOfQuiz1User2.size();
+		User user1 = userRepository.findByUsername("user1").get();
+		Long user1Id = user1.getId();
+
+		UserPublic user1Public = userRepository.findRatingByUserId(user1Id);
+		Integer user1Rating = user1Public.getRating();
+		assertThat(user1Rating).isEqualTo(rate * questionsSize);
+	}
+
+	@Test
+	@Rollback
+	public void testSendAttemptNotAllCorrectGoodCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/sendattempt/";
+
+		User user2 = userRepository.findByUsername("user2").get();
+		Quiz quiz1User2 = user2.getQuizzes().get(0);
+		Long quiz1User2Id = quiz1User2.getQuizId();
+
+		List<Question> questionsOfQuiz1User2 = quiz1User2.getQuestions();
+
+		List<AttemptAnswer> attemptAnswers = this.createCorrectAttemptAnswersList(questionsOfQuiz1User2);
+
+		Question question1OfQuestionsOfQuiz1User2 = questionsOfQuiz1User2.get(0);
+		Long incorrectAnswerOfQuestion1Id = null;
+		for (Answer answer : question1OfQuestionsOfQuiz1User2.getAnswers()) {
+			if (!answer.isCorrect()) {
+				incorrectAnswerOfQuestion1Id = answer.getAnswerId();
+				break;
+			}
+		}
+
+		attemptAnswers.get(0).setAnswerId(incorrectAnswerOfQuestion1Id);
+
+		AttemptForm attemptForm = new AttemptForm(attemptAnswers, 5);
+
+		String requestBody = objectMapper.writeValueAsString(attemptForm);
+		String requestURIGood = requestURI + quiz1User2Id;
+		mockMvc.perform(post(requestURIGood).header("Authorization", jwtToken).contentType(MediaType.APPLICATION_JSON)
+				.content(requestBody)).andExpect(status().isOk());
+
+		Difficulty quiz1User2Difficulty = quiz1User2.getDifficulty();
+		Integer rate = quiz1User2Difficulty.getRate();
+		Integer questionsSize = questionsOfQuiz1User2.size();
+		User user1 = userRepository.findByUsername("user1").get();
+		Long user1Id = user1.getId();
+
+		UserPublic user1Public = userRepository.findRatingByUserId(user1Id);
+		Integer user1Rating = user1Public.getRating();
+		assertThat(user1Rating).isEqualTo(rate * (questionsSize - 1));
+	}
+
+	@Test
+	@Rollback
+	public void testDeleteQuizByIdNotFoundCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/deletequiz/";
+
+		String requestURINotFound = requestURI + Long.valueOf(200);
+
+		mockMvc.perform(delete(requestURINotFound).header("Authorization", jwtToken)).andExpect(status().isBadRequest())
+				.andExpect(content().string("The quiz was not found for provided ID"));
+	}
+
+	@Test
+	@Rollback
+	public void testDeleteQuizByIdOtherUserQuizCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/deletequiz/";
+
+		User user2 = userRepository.findByUsername("user2").get();
+		Long user2Id = user2.getId();
+		List<Quiz> user2Quizzes = quizRepository.findQuizzesByUserId(user2Id);
+		Quiz quiz1User2 = user2Quizzes.get(0);
+		Long quiz1User2Id = quiz1User2.getQuizId();
+
+		String requestURIOtherUserQuiz = requestURI + quiz1User2Id;
+
+		mockMvc.perform(delete(requestURIOtherUserQuiz).header("Authorization", jwtToken))
+				.andExpect(status().isUnauthorized())
+				.andExpect(content().string("You can't delete someone else's quiz"));
+	}
+
+	@Test
+	@Rollback
+	public void testDeleteQuizByIdGoodCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/deletequiz/";
+
+		User user1 = userRepository.findByUsername("user1").get();
+		Long user1Id = user1.getId();
+		List<Quiz> user1Quizzes = quizRepository.findQuizzesByUserId(user1Id);
+		Quiz quiz1User1 = user1Quizzes.get(0);
+		Long quiz1User1Id = quiz1User1.getQuizId();
+
+		String requestURIGoodCase = requestURI + quiz1User1Id;
+
+		mockMvc.perform(delete(requestURIGoodCase).header("Authorization", jwtToken)).andExpect(status().isOk());
+		Optional<Quiz> optionalQuizDeleted = quizRepository.findById(quiz1User1Id);
+		assertThat(optionalQuizDeleted).isNotPresent();
+	}
+
+	@Test
+	@Rollback
+	public void testGetAvatarByUserIdOtherUserCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/getavatar/";
+
+		User user2 = userRepository.findByUsername("user2").get();
+		Long user2Id = user2.getId();
+
+		String requestURIOtherUser = requestURI + user2Id;
+
+		mockMvc.perform(get(requestURIOtherUser).header("Authorization", jwtToken))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	@Rollback
+	public void testGetAvatarByUserIdGoodCases() throws Exception {
+		String requestURI = END_POINT_PATH + "/getavatar/";
+
+		User user1 = userRepository.findByUsername("user1").get();
+		Long user1Id = user1.getId();
+
+		String requestURIGoodCase = requestURI + user1Id;
+
+		MvcResult result = mockMvc.perform(get(requestURIGoodCase).header("Authorization", jwtToken))
+				.andExpect(status().isOk()).andReturn();
+
+		String avatarURL = result.getResponse().getContentAsString();
+		assertThat(avatarURL).isEqualTo("");
+
+		String url = "https://some-url.com";
+		user1.setAvatarUrl(url);
+		userRepository.save(user1);
+
+		result = mockMvc.perform(get(requestURIGoodCase).header("Authorization", jwtToken)).andExpect(status().isOk())
+				.andReturn();
+
+		avatarURL = result.getResponse().getContentAsString();
+		assertThat(avatarURL).isEqualTo(url);
+	}
+
+	@Test
+	@Rollback
+	public void testUpdateAvatarByUserIdOtherUserCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/updateavatar/";
+
+		User user2 = userRepository.findByUsername("user2").get();
+		Long user2Id = user2.getId();
+
+		String requestURIOtherUser = requestURI + user2Id;
+		String requestBody = "some-new-url.com";
+
+		mockMvc.perform(post(requestURIOtherUser).header("Authorization", jwtToken)
+				.contentType(MediaType.APPLICATION_JSON).content(requestBody)).andExpect(status().isUnauthorized())
+				.andExpect(content().string("You can't change someone else's avatarUrl"));
+	}
+
+	@Test
+	@Rollback
+	public void testUpdateAvatarByUserIdGoodCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/updateavatar/";
+
+		User user1 = userRepository.findByUsername("user1").get();
+		Long user1Id = user1.getId();
+
+		String requestURIGoodCase = requestURI + user1Id;
+
+		String requestBody = "some-new-url.com";
+
+		mockMvc.perform(post(requestURIGoodCase).header("Authorization", jwtToken)
+				.contentType(MediaType.APPLICATION_JSON).content(requestBody)).andExpect(status().isOk());
+		
+		user1 = userRepository.findByUsername("user1").get();
+		assertThat(user1.getAvatarUrl()).isEqualTo(requestBody);
+	}
+
+	private List<AttemptAnswer> createCorrectAttemptAnswersList(List<Question> questions) {
+		List<AttemptAnswer> attemptAnswers = new ArrayList<AttemptAnswer>();
+		AttemptAnswer attemptAnswer;
+		Long questionId;
+		Long answerId = null;
+		List<Answer> questionAnswers;
+
+		for (Question question : questions) {
+			questionId = question.getQuestionId();
+			questionAnswers = question.getAnswers();
+			for (Answer answer : questionAnswers) {
+				answerId = answer.getAnswerId();
+				if (answer.isCorrect())
+					break;
+			}
+			attemptAnswer = new AttemptAnswer(answerId, questionId);
+			attemptAnswers.add(attemptAnswer);
+		}
+
+		return attemptAnswers;
 	}
 
 	private QuizUpdate createQuizUpdateInstance(Quiz quiz, Long userId) {
