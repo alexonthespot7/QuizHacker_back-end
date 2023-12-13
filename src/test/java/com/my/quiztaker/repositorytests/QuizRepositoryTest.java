@@ -145,7 +145,7 @@ public class QuizRepositoryTest {
 		User user1 = this.createDefaultUser();
 		Long user1Id = user1.getId();
 
-		List<Quiz> quizzesOfOtherUsersForUser1 = quizRepository.findQuizzesFromOtherUsers(user1Id);
+		List<Quiz> quizzesOfOtherUsersForUser1 = quizRepository.findPublishedQuizzesFromOtherUsers(user1Id);
 		assertThat(quizzesOfOtherUsersForUser1).isEmpty();
 		
 		User user2 = this.createCustomUser("user2", "user2@mail.com");
@@ -156,7 +156,16 @@ public class QuizRepositoryTest {
 		
 		this.createDefaultQuiz(user1, difficulty, category);
 		
-		quizzesOfOtherUsersForUser1 = quizRepository.findQuizzesFromOtherUsers(user1Id);
+		quizzesOfOtherUsersForUser1 = quizRepository.findPublishedQuizzesFromOtherUsers(user1Id);
+		assertThat(quizzesOfOtherUsersForUser1).hasSize(0);
+		
+		List<Quiz> quizzes = (List<Quiz>) quizRepository.findAll();
+		for (Quiz quiz : quizzes) {
+			quiz.setStatus("Published");
+			quizRepository.save(quiz);
+		}
+		
+		quizzesOfOtherUsersForUser1 = quizRepository.findPublishedQuizzesFromOtherUsers(user1Id);
 		assertThat(quizzesOfOtherUsersForUser1).hasSize(2);
 	}
 	
