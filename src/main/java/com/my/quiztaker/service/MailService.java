@@ -4,6 +4,7 @@ import java.io.UnsupportedEncodingException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mail.MailAuthenticationException;
@@ -21,11 +22,44 @@ import jakarta.mail.internet.MimeMessage;
 public class MailService {
 	@Autowired
 	private UserRepository userRepository;
-	
+
 	@Autowired
 	private JavaMailSender mailSender;
 
-	public void sendVerificationEmail(User user) throws MessagingException, UnsupportedEncodingException {
+	public ResponseEntity<?> tryToSendVerificationMail(User user)
+			throws MessagingException, UnsupportedEncodingException {
+		try {
+			this.sendVerificationEmail(user);
+
+			return ResponseEntity.accepted().header(HttpHeaders.HOST, user.getId().toString())
+					.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
+
+		} catch (MailAuthenticationException exc) {
+			this.verifyUser(user);
+
+			return ResponseEntity.created(null).header(HttpHeaders.HOST, user.getId().toString())
+					.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").contentType(MediaType.TEXT_PLAIN)
+					.body("The email service is not available now, your account has been verified. You can login now");
+		}
+	}
+
+	public void verifyUser(User user) {
+		user.setAccountVerified(true);
+		user.setVerificationCode(null);
+		userRepository.save(user);
+	}
+
+	public ResponseEntity<?> tryToSendPasswordMail(User user, String password)
+			throws MessagingException, UnsupportedEncodingException {
+		try {
+			this.sendPasswordEmail(user, password);
+			return new ResponseEntity<>("A temporary password was sent to your email address", HttpStatus.OK);
+		} catch (MailAuthenticationException exc) {
+			return new ResponseEntity<>("This service isn't available at the moment", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	private void sendVerificationEmail(User user) throws MessagingException, UnsupportedEncodingException {
 		String toAddress = user.getEmail();
 		String fromAddress = "aleksei.application.noreply@gmail.com";
 		String senderName = "No reply";
@@ -50,7 +84,7 @@ public class MailService {
 		mailSender.send(message);
 	}
 
-	public void sendPasswordEmail(User user, String password) throws MessagingException, UnsupportedEncodingException {
+	private void sendPasswordEmail(User user, String password) throws MessagingException, UnsupportedEncodingException {
 		String toAddress = user.getEmail();
 		String fromAddress = "aleksei.application.noreply@gmail.com";
 		String senderName = "No reply";
@@ -73,28 +107,5 @@ public class MailService {
 		helper.setText(content, true);
 
 		mailSender.send(message);
-	}
-	
-	public ResponseEntity<?> tryToSendVerificationMail(User user)
-			throws MessagingException, UnsupportedEncodingException {
-		try {
-			this.sendVerificationEmail(user);
-
-			return ResponseEntity.accepted().header(HttpHeaders.HOST, user.getId().toString())
-					.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
-
-		} catch (MailAuthenticationException exc) {
-			this.verifyUser(user);
-
-			return ResponseEntity.created(null).header(HttpHeaders.HOST, user.getId().toString())
-					.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").contentType(MediaType.TEXT_PLAIN)
-					.body("The email service is not available now, your account has been verified. You can login now");
-		}
-	}
-	
-	public void verifyUser(User user) {
-		user.setAccountVerified(true);
-		user.setVerificationCode(null);
-		userRepository.save(user);
 	}
 }

@@ -8,9 +8,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.mail.MailAuthenticationException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -94,7 +92,7 @@ public class UserService {
 
 	// Verify user method
 	public ResponseEntity<?> verifyUser(String token, Long userId) {
-		User user = this.checkUserById(userId);
+		User user = this.findUserById(userId);
 
 		if (user.isAccountVerified())
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The user is already verified");
@@ -105,6 +103,19 @@ public class UserService {
 		mailService.verifyUser(user);
 
 		return new ResponseEntity<>("Verification went well", HttpStatus.OK);
+	}
+
+	// Reset password method for user:
+	public ResponseEntity<?> resetPassword(String email) throws UnsupportedEncodingException, MessagingException {
+		User user = this.findUserByEmail(email);
+
+		if (!user.isAccountVerified())
+			return new ResponseEntity<>("User with this email (" + email + ") is not verified",
+					HttpStatus.UNAUTHORIZED);
+
+		String password = this.setNewRandomPassword(user);
+
+		return mailService.tryToSendPasswordMail(user, password);
 	}
 
 	private List<UserPublic> getTop10(List<UserPublic> leaders) {
@@ -198,7 +209,7 @@ public class UserService {
 		return newUser;
 	}
 
-	private User checkUserById(Long userId) {
+	private User findUserById(Long userId) {
 		Optional<User> optionalUser = userRepository.findById(userId);
 
 		if (!optionalUser.isPresent())
@@ -207,5 +218,27 @@ public class UserService {
 		User user = optionalUser.get();
 
 		return user;
+	}
+
+	private User findUserByEmail(String email) {
+		Optional<User> optionalUser = userRepository.findByEmail(email);
+
+		if (!optionalUser.isPresent())
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"User with this email (" + email + ") doesn't exist");
+
+		User user = optionalUser.get();
+		return user;
+	}
+	
+	private String setNewRandomPassword(User user) {
+		String password = RandomStringUtils.random(15);
+
+		BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
+		String hashPwd = bc.encode(password);
+		user.setPassword(hashPwd);
+		userRepository.save(user);
+		
+		return password;
 	}
 }
