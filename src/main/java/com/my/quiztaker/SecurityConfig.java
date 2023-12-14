@@ -35,7 +35,7 @@ public class SecurityConfig {
 	private AuthenticationFilter authenticationFilter;
 	
 	@Autowired
-	private AuthEntryPoint exceptionHandler;
+	private AuthEntryPoint authExceptionHandler;
 	
 	private static final String[] SWAGGER_PATHS = {"/swagger-ui/**", "/v3/api-docs/**", "/api-docs/**", "/v3/api-docs", "/swagger-ui.html"};
 
@@ -47,13 +47,14 @@ public class SecurityConfig {
 				.authorizeHttpRequests((authorizeHttpRequests) -> authorizeHttpRequests
 						.requestMatchers(SWAGGER_PATHS).permitAll()
 						.requestMatchers(HttpMethod.GET, "/quizzes", "/quizzes/*", "/questions", "/questions/*", "/answers/*", "/difficulties", "/categories", "/users").permitAll()
-						.requestMatchers(HttpMethod.POST, "/login", "/signup", "/verify/*", "/resetpassword").permitAll()
+						.requestMatchers(HttpMethod.POST, "/login", "/signup").permitAll()
+						.requestMatchers(HttpMethod.PUT, "/verify/*", "/resetpassword").permitAll()
 						.requestMatchers(HttpMethod.DELETE, "/deletequestion/*", "/deletequiz/*").authenticated()
 						.requestMatchers(HttpMethod.GET, "/addattempt/*", "/createquiz", "/quizzesbyuser/*", "/usersauth/*", "/users/*", "/personalquizzes/*", "/getavatar/*").authenticated()
 						.requestMatchers(HttpMethod.POST, "/changepassword", "/updatequiz/*", "/savequestions/*", "/publishquiz/*", "/sendattempt/*", "/updateavatar/*").authenticated()
-						.anyRequest().hasAuthority("ADMIN"))
+						.anyRequest().permitAll())
 				.addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class)
-				.exceptionHandling((exceptionHandling) -> exceptionHandling.authenticationEntryPoint(exceptionHandler));
+				.exceptionHandling((exceptionHandling) -> exceptionHandling.authenticationEntryPoint(authExceptionHandler));
 
 		return http.build();
 	}
