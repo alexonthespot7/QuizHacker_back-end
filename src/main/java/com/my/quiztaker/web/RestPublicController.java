@@ -43,6 +43,8 @@ import com.my.quiztaker.model.QuizRepository;
 import com.my.quiztaker.model.User;
 import com.my.quiztaker.model.UserRepository;
 import com.my.quiztaker.service.AuthenticationService;
+import com.my.quiztaker.service.CategoryService;
+import com.my.quiztaker.service.DifficultyService;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -75,18 +77,24 @@ public class RestPublicController {
 
 	@Autowired
 	private JavaMailSender mailSender;
+	
+	@Autowired
+	private CategoryService categoryService;
+	
+	@Autowired
+	private DifficultyService difficultyService;
 
 	// limit to display only top 10 players:
 	private static final int LIMIT = 10;
 
 	@RequestMapping("/categories")
 	public @ResponseBody List<Category> getCategories() {
-		return (List<Category>) catRepository.findAll();
+		return categoryService.getCategories();
 	}
 
 	@RequestMapping("/difficulties")
 	public @ResponseBody List<Difficulty> getDifficulties() {
-		return (List<Difficulty>) difRepository.findAll();
+		return difficultyService.getDifficulties();
 	}
 
 	@RequestMapping("/quizzes")
