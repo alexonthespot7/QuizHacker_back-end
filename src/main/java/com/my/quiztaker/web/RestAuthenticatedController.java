@@ -23,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.my.quiztaker.MyUser;
 import com.my.quiztaker.forms.AttemptAnswer;
 import com.my.quiztaker.forms.AttemptForm;
+import com.my.quiztaker.forms.Leaderboard;
 import com.my.quiztaker.forms.PersonalInfo;
 import com.my.quiztaker.forms.QuizRatingQuestions;
 import com.my.quiztaker.forms.QuizUpdate;
@@ -42,6 +43,8 @@ import com.my.quiztaker.model.QuizRepository;
 import com.my.quiztaker.model.User;
 import com.my.quiztaker.model.UserRepository;
 import com.my.quiztaker.service.AuthenticationService;
+import com.my.quiztaker.service.QuestionService;
+import com.my.quiztaker.service.UserService;
 
 @RestController
 public class RestAuthenticatedController {
@@ -65,6 +68,12 @@ public class RestAuthenticatedController {
 
 	@Autowired
 	private AnswerRepository answerRepository;
+	
+	@Autowired
+	private QuestionService questionService;
+	
+	@Autowired
+	private UserService userService;
 
 	@Autowired
 	private AuthenticationService jwtService;
@@ -78,72 +87,50 @@ public class RestAuthenticatedController {
 	@RequestMapping("/questions/{quizid}")
 	public @ResponseBody List<Question> getQuestionsByQuizId(@PathVariable("quizid") Long quizId, Authentication auth) {
 
-		Optional<Quiz> optionalQuiz = quizRepository.findById(quizId);
-
-		if (!optionalQuiz.isPresent())
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "There's no quiz with this id");
-
-		List<Question> questions = questionRepository.findQuestionsByQuizId(quizId);
-		if (auth == null) {
-			for (int i = 0; i < questions.size(); i++) {
-				for (int j = 0; j < questions.get(i).getAnswers().size(); j++) {
-					questions.get(i).getAnswers().get(j).setCorrect(false);
-				}
-			}
-		} else {
-			if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
-				MyUser myUser = (MyUser) auth.getPrincipal();
-				Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
-
-				if (optUser.isPresent()
-						&& optUser.get().getId() == quizRepository.findById(quizId).get().getUser().getId()) {
-
-					return questionRepository.findQuestionsByQuizId(quizId);
-				} else {
-					for (int i = 0; i < questions.size(); i++) {
-						for (int j = 0; j < questions.get(i).getAnswers().size(); j++) {
-							questions.get(i).getAnswers().get(j).setCorrect(false);
-						}
-					}
-				}
-			} else {
-				for (int i = 0; i < questions.size(); i++) {
-					for (int j = 0; j < questions.get(i).getAnswers().size(); j++) {
-						questions.get(i).getAnswers().get(j).setCorrect(false);
-					}
-				}
-			}
-		}
-		return questions;
+		return questionService.getQuestionsByQuizId(quizId, auth);
+		
 	}
 
 	@RequestMapping("/users/{userid}")
 	@PreAuthorize("isAuthenticated()")
-	public @ResponseBody PersonalInfo getLeaderboardAuth(@PathVariable("userid") Long userId, Authentication auth) {
-		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
-			MyUser myUser = (MyUser) auth.getPrincipal();
-			Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
-			if (optUser.isPresent() && optUser.get().getId() == userId) {
-				UserPublic userPublic = userRepository.findRatingByUserId(userId);
+	public @ResponseBody PersonalInfo getPersonalInfo(@PathVariable("userid") Long userId, Authentication auth) {
+		
+		return userService.getPersonalInfo(userId, auth);
+	
+	}
 
-				// if user doesn't have any attempts
-				if (userPublic == null) {
-					return new PersonalInfo(optUser.get().getUsername(), optUser.get().getEmail(), 0,
-							attemptRepository.findAttemptsByUserId(userId), -1);
-				}
-
-				String username = optUser.get().getUsername();
-				List<UserPublic> leaders = userRepository.findLeaderBoard();
-				int position = this.findPosition(username, leaders);
-
-				return new PersonalInfo(optUser.get().getUsername(), optUser.get().getEmail(), userPublic.getRating(),
-						attemptRepository.findAttemptsByUserId(userId), position);
-			} else {
-				throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
-			}
-		} else {
+	@RequestMapping("/usersauth/{userid}")
+	@PreAuthorize("isAuthenticated()")
+	public @ResponseBody Leaderboard getLeaderboardAuth(@PathVariable("userid") Long userId, Authentication auth) {
+		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
+
+		MyUser myUser = (MyUser) auth.getPrincipal();
+		Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
+
+		if (!optUser.isPresent())
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
+
+		if (optUser.get().getId() != userId)
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You can't fetch other user's info");
+
+		List<UserPublic> leaders = userRepository.findLeaderBoard();
+
+		Integer position = this.findPosition(myUser.getUsername(), leaders);
+
+		if (leaders.size() > LIMIT) {
+			leaders = leaders.subList(0, LIMIT);
 		}
+
+		if (position > LIMIT) {
+			UserPublic userRow = userRepository.findRatingByUserId(userId);
+			leaders.add(userRow);
+		}
+
+		if (userRepository.findRatingByUserId(userId) == null)
+			return new Leaderboard(leaders, -1);
+
+		return new Leaderboard(leaders, position);
 	}
 
 	@RequestMapping("/quizzesbyuser/{userid}")

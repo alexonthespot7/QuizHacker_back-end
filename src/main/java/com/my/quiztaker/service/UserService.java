@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.apache.commons.lang3.RandomStringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -16,10 +18,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.my.quiztaker.MyUser;
 import com.my.quiztaker.forms.AccountCredentials;
 import com.my.quiztaker.forms.Leaderboard;
+import com.my.quiztaker.forms.PersonalInfo;
 import com.my.quiztaker.forms.SignupCredentials;
 import com.my.quiztaker.forms.UserPublic;
+import com.my.quiztaker.model.AttemptRepository;
 import com.my.quiztaker.model.User;
 import com.my.quiztaker.model.UserRepository;
 
@@ -27,8 +32,14 @@ import jakarta.mail.MessagingException;
 
 @Service
 public class UserService {
+
+	private static final Logger log = LoggerFactory.getLogger(UserService.class);
+
 	@Autowired
 	private UserRepository userRepository;
+
+	@Autowired
+	private AttemptRepository attemptRepository;
 
 	@Autowired
 	private MailService mailService;
@@ -116,6 +127,17 @@ public class UserService {
 		String password = this.setNewRandomPassword(user);
 
 		return mailService.tryToSendPasswordMail(user, password);
+	}
+
+	// Method to get personal info of authenticated user:
+	public PersonalInfo getPersonalInfo(Long userId, Authentication auth) {
+		User user = this.checkAuthentication(auth);
+
+		if (user.getId() != userId)
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+					"You are not allowed to get someone else's info");
+
+		return this.createPersonalInfoInstance(user, userId);
 	}
 
 	private List<UserPublic> getTop10(List<UserPublic> leaders) {
@@ -230,7 +252,7 @@ public class UserService {
 		User user = optionalUser.get();
 		return user;
 	}
-	
+
 	private String setNewRandomPassword(User user) {
 		String password = RandomStringUtils.random(15);
 
@@ -238,7 +260,67 @@ public class UserService {
 		String hashPwd = bc.encode(password);
 		user.setPassword(hashPwd);
 		userRepository.save(user);
-		
+
 		return password;
+	}
+
+	private User checkAuthentication(Authentication auth) {
+		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
+
+		MyUser myUser = (MyUser) auth.getPrincipal();
+		Optional<User> optionalUser = userRepository.findByUsername(myUser.getUsername());
+
+		if (!optionalUser.isPresent()) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
+		}
+
+		User user = optionalUser.get();
+
+		return user;
+	}
+
+	private PersonalInfo createPersonalInfoInstance(User user, Long userId) {
+		UserPublic userPublic = userRepository.findRatingByUserId(userId);
+
+		// if user doesn't have any attempts, they are not in the leaderboard and have rating 0:
+		int position = -1;
+		String username = user.getUsername();
+		String email = user.getEmail();
+		Integer userRating = 0;
+		Integer attemptsAmount = attemptRepository.findAttemptsByUserId(userId);
+
+		PersonalInfo personalInfo = new PersonalInfo(username, email, userRating, attemptsAmount, position);
+		
+		if (userPublic == null) {
+			return personalInfo;
+		}
+		
+		List<UserPublic> leaders = userRepository.findLeaderBoard();
+		position = this.findPosition(username, leaders);
+		personalInfo.setPosition(position);
+		
+		userRating = userPublic.getRating();
+		personalInfo.setScore(userRating);
+
+		return personalInfo;
+	}
+
+	private int findPosition(String username, List<UserPublic> leaders) {
+		int position = -1;
+		UserPublic userPublic;
+		String usernameOfCurrentUser;
+
+		for (int i = 0; i < leaders.size(); i++) {
+			userPublic = leaders.get(i);
+			usernameOfCurrentUser = userPublic.getUsername();
+
+			if (usernameOfCurrentUser.equals(username)) {
+				position = i + 1;
+				break;
+			}
+		}
+
+		return position;
 	}
 }

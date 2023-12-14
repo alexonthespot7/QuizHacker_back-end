@@ -40,25 +40,38 @@ public class QuizService {
 		return quizRatingQuestionsList;
 	}
 
-	private List<QuizRatingQuestions> makeQuizRatingQuestionsListFromQuizzes(List<Quiz> quizzes) {
-		Double rating;
-		QuizRatingQuestions quizRatingQuestions;
-		Integer questionsAmount;
-		Long quizId;
+	// The method to get quiz info and its rating by quiz ID:
+	public QuizRating getQuizById(Long quizId) {
+		Quiz quiz = this.checkQuizById(quizId);
 
+		Double rating = attemptRepository.findQuizRating(quizId);
+
+		return new QuizRating(quiz, rating);
+	}
+
+	private List<QuizRatingQuestions> makeQuizRatingQuestionsListFromQuizzes(List<Quiz> quizzes) {
 		List<QuizRatingQuestions> quizRatingsQuestionsList = new ArrayList<QuizRatingQuestions>();
 
+		QuizRatingQuestions quizRatingQuestions;
+
 		for (Quiz quiz : quizzes) {
-			quizId = quiz.getQuizId();
+			quizRatingQuestions = this.makeQuizRatingQuestionsFromQuiz(quiz);
 
-			rating = attemptRepository.findQuizRating(quizId);
-			questionsAmount = this.getAmountOfQuestionsInQuiz(quizId);
-
-			quizRatingQuestions = new QuizRatingQuestions(quiz, rating, questionsAmount);
 			quizRatingsQuestionsList.add(quizRatingQuestions);
 		}
 
 		return quizRatingsQuestionsList;
+	}
+
+	private QuizRatingQuestions makeQuizRatingQuestionsFromQuiz(Quiz quiz) {
+		Long quizId = quiz.getQuizId();
+
+		Double rating = attemptRepository.findQuizRating(quizId);
+		Integer questionsAmount = this.getAmountOfQuestionsInQuiz(quizId);
+
+		QuizRatingQuestions quizRatingQuestions = new QuizRatingQuestions(quiz, rating, questionsAmount);
+
+		return quizRatingQuestions;
 	}
 
 	private Integer getAmountOfQuestionsInQuiz(Long quizId) {
@@ -69,15 +82,6 @@ public class QuizService {
 		return questionsAmount;
 	}
 
-	// The method to get quiz info and its rating by quiz ID:
-	public QuizRating getQuizById(Long quizId) {
-		Quiz quiz = this.checkQuizById(quizId);
-
-		Double rating = attemptRepository.findQuizRating(quizId);
-
-		return new QuizRating(quiz, rating);
-	}
-
 	private Quiz checkQuizById(Long quizId) {
 		Optional<Quiz> optionalQuiz = quizRepository.findById(quizId);
 
@@ -85,7 +89,7 @@ public class QuizService {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "There's no quiz with this id");
 
 		Quiz quiz = optionalQuiz.get();
-		
+
 		return quiz;
 	}
 }

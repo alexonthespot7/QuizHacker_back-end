@@ -174,7 +174,7 @@ public class RestAuthenticatedControllerTest {
 
 	@Test
 	@Rollback
-	public void testGetLeaderboardAuthIdMissmatchCase() throws Exception {
+	public void testGetPersonalInfoIdMissmatchCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/users/";
 
 		// Userid missmatch case (the authentication is for user1, let's use user's 2
@@ -189,7 +189,7 @@ public class RestAuthenticatedControllerTest {
 
 	@Test
 	@Rollback
-	public void testGetLeaderboardAuthNoRatingCase() throws Exception {
+	public void testGetPersonalInfoNoRatingCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/users/";
 
 		User user1 = userRepository.findByUsername("user1").get();
@@ -206,7 +206,7 @@ public class RestAuthenticatedControllerTest {
 
 	@Test
 	@Rollback
-	public void testGetLeaderboardAuthWithRatingCase() throws Exception {
+	public void testGetPersonalInfoWithRatingCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/users/";
 
 		User user1 = userRepository.findByUsername("user1").get();
@@ -222,6 +222,72 @@ public class RestAuthenticatedControllerTest {
 				.andExpect(MockMvcResultMatchers.jsonPath("$.attempts").value(1))
 				.andExpect(MockMvcResultMatchers.jsonPath("$.username").value("user1"))
 				.andExpect(MockMvcResultMatchers.jsonPath("$.score").value(5 * 1));
+	}
+
+	@Test
+	@Rollback
+	public void testGetLeaderboardAuthWithRatingCases() throws Exception {
+		String requestURI = END_POINT_PATH + "/usersauth/";
+
+		User user1 = userRepository.findByUsername("user1").get();
+		Long user1Id = user1.getId();
+
+		String requestURINoRating = requestURI + user1Id;
+
+		List<Quiz> quizzesForUser1 = quizRepository.findPublishedQuizzesFromOtherUsers(user1Id);
+		Quiz quizForUser1 = quizzesForUser1.get(0);
+		this.createAttempt(user1, quizForUser1);
+
+		mockMvc.perform(get(requestURINoRating).header("Authorization", jwtToken)).andExpect(status().isOk())
+				.andExpect(MockMvcResultMatchers.jsonPath("$.users.size()").value(2))
+				.andExpect(MockMvcResultMatchers.jsonPath("$.position").value(2));
+
+		// Getting more points to get to the 1 position;
+		this.createAttempt(user1, quizForUser1);
+		this.createAttempt(user1, quizForUser1);
+		this.createAttempt(user1, quizForUser1);
+		this.createAttempt(user1, quizForUser1);
+		this.createAttempt(user1, quizForUser1);
+		this.createAttempt(user1, quizForUser1);
+		this.createAttempt(user1, quizForUser1);
+
+		mockMvc.perform(get(requestURINoRating).header("Authorization", jwtToken)).andExpect(status().isOk())
+				.andExpect(MockMvcResultMatchers.jsonPath("$.users.size()").value(2))
+				.andExpect(MockMvcResultMatchers.jsonPath("$.position").value(1));
+	}
+
+	@Test
+	@Rollback
+	public void testGetLeaderboardAuthNoRatingCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/usersauth/";
+
+		User user1 = userRepository.findByUsername("user1").get();
+		Long user1Id = user1.getId();
+
+		String requestURINoRating = requestURI + user1Id;
+
+		mockMvc.perform(get(requestURINoRating).header("Authorization", jwtToken)).andExpect(status().isOk())
+				.andExpect(MockMvcResultMatchers.jsonPath("$.users.size()").value(1))
+				.andExpect(MockMvcResultMatchers.jsonPath("$.position").value(-1));
+	}
+
+	@Test
+	@Rollback
+	public void testGetLeaderboardAuthWronIdCases() throws Exception {
+		String requestURI = END_POINT_PATH + "/usersauth/";
+
+		// Case user's id is not in the db
+		String requestURIWrongId = requestURI + Long.valueOf(20);
+
+		mockMvc.perform(get(requestURIWrongId).header("Authorization", jwtToken)).andExpect(status().isUnauthorized());
+
+		// Case other user's id:
+		User user2 = userRepository.findByUsername("user2").get();
+		Long user2Id = user2.getId();
+		String requestURIOtherUserId = requestURI + user2Id;
+
+		mockMvc.perform(get(requestURIOtherUserId).header("Authorization", jwtToken))
+				.andExpect(status().isUnauthorized());
 	}
 
 	@Test
@@ -994,7 +1060,7 @@ public class RestAuthenticatedControllerTest {
 
 		mockMvc.perform(post(requestURIGoodCase).header("Authorization", jwtToken)
 				.contentType(MediaType.APPLICATION_JSON).content(requestBody)).andExpect(status().isOk());
-		
+
 		user1 = userRepository.findByUsername("user1").get();
 		assertThat(user1.getAvatarUrl()).isEqualTo(requestBody);
 	}

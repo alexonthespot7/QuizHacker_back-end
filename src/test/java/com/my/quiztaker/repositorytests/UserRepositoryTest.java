@@ -180,11 +180,10 @@ public class UserRepositoryTest {
 		UserPublic userPublic2 = userRepository.findRatingByUserId(user2Id);
 		assertThat(userPublic1).isNotNull();
 		assertThat(userPublic2).isNotNull();
-
 		assertThat(userPublic1.getRating()).isEqualTo(8 * 3);
 		assertThat(userPublic2.getRating()).isEqualTo(5 * 3);
 	}
-	
+
 	@Test
 	@Rollback
 	public void testFindRatingByUserIdMedium() {
@@ -207,7 +206,6 @@ public class UserRepositoryTest {
 		UserPublic userPublic2 = userRepository.findRatingByUserId(user2Id);
 		assertThat(userPublic1).isNotNull();
 		assertThat(userPublic2).isNotNull();
-
 		assertThat(userPublic1.getRating()).isEqualTo(8 * 2);
 		assertThat(userPublic2.getRating()).isEqualTo(5 * 2);
 	}
@@ -277,7 +275,7 @@ public class UserRepositoryTest {
 
 		return newQuiz;
 	}
-	
+
 	private Quiz createQuizWithMidDifficulty(User user) {
 		Category category = this.createCategory();
 
@@ -302,7 +300,7 @@ public class UserRepositoryTest {
 
 		return hardDifficulty;
 	}
-	
+
 	private Difficulty createMediumDifficulty() {
 		Difficulty mediumDifficulty = new Difficulty("Medium", 2);
 		difficultyRepository.save(mediumDifficulty);
