@@ -18,7 +18,9 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -79,133 +81,62 @@ public class RestPublicController {
 
 	@Autowired
 	private JavaMailSender mailSender;
-	
+
 	@Autowired
 	private CategoryService categoryService;
-	
+
 	@Autowired
 	private DifficultyService difficultyService;
-	
+
 	@Autowired
 	private QuizService quizService;
-	
+
 	@Autowired
 	private UserService userService;
 
 	// limit to display only top 10 players:
 	private static final int LIMIT = 10;
 
-	@RequestMapping("/categories")
+	@GetMapping("/categories")
 	public @ResponseBody List<Category> getCategories() {
-		
+
 		return categoryService.getCategories();
-	
+
 	}
 
-	@RequestMapping("/difficulties")
+	@GetMapping("/difficulties")
 	public @ResponseBody List<Difficulty> getDifficulties() {
-		
+
 		return difficultyService.getDifficulties();
-	
+
 	}
 
-	@RequestMapping("/quizzes")
+	@GetMapping("/quizzes")
 	public @ResponseBody List<QuizRatingQuestions> getQuizzes() {
 
 		return quizService.getQuizzes();
-		
+
 	}
 
-	@RequestMapping("/users")
+	@GetMapping("/users")
 	public @ResponseBody Leaderboard getLeaderboardNoAuth() {
-		
+
 		return userService.getLeaderboardNoAuth();
-		
+
 	}
 
-	@RequestMapping("/quizzes/{quizid}")
+	@GetMapping("/quizzes/{quizid}")
 	public @ResponseBody QuizRating getQuizById(@PathVariable("quizid") Long quizId) {
-		if (quizRepository.findById(quizId).isPresent()) {
-			Quiz quiz = quizRepository.findById(quizId).get();
-			Double rating = attRepository.findQuizRating(quizId);
 
-			return new QuizRating(quiz, rating);
-		} else {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "There's no quiz with this id");
-		}
+		return quizService.getQuizById(quizId);
+
 	}
 
-	@RequestMapping(value = "/login", method = RequestMethod.POST)
+	@PostMapping("/login")
 	public ResponseEntity<?> getToken(@RequestBody AccountCredentials credentials)
 			throws UnsupportedEncodingException, MessagingException {
-		Optional<User> userByMail = urepository.findByEmail(credentials.getUsername());
 
-		UsernamePasswordAuthenticationToken creds;
-
-		if (userByMail.isPresent()) {
-			User userByMailPresent = userByMail.get();
-			if (userByMailPresent.isAccountVerified()) {
-				creds = new UsernamePasswordAuthenticationToken(userByMailPresent.getUsername(),
-						credentials.getPassword());
-			} else {
-				String randomCode = RandomStringUtils.random(6);
-				userByMailPresent.setVerificationCode(randomCode);
-				urepository.save(userByMailPresent);
-				try {
-					this.sendVerificationEmail(userByMailPresent);
-					return ResponseEntity.accepted().header(HttpHeaders.HOST, userByMailPresent.getId().toString())
-							.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
-				} catch (MailAuthenticationException exc) {
-					userByMailPresent.setAccountVerified(true);
-					userByMailPresent.setVerificationCode(null);
-					urepository.save(userByMailPresent);
-
-					return ResponseEntity.created(null).header(HttpHeaders.HOST, userByMailPresent.getId().toString())
-							.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").contentType(MediaType.TEXT_PLAIN)
-							.body("The email service is not available now, your account has been verified. You can login now");
-				}
-			}
-		} else {
-			if (urepository.findByUsername(credentials.getUsername()).isPresent()) {
-				User userByUsername = urepository.findByUsername(credentials.getUsername()).get();
-				if (userByUsername.isAccountVerified()) {
-					creds = new UsernamePasswordAuthenticationToken(credentials.getUsername(),
-							credentials.getPassword());
-				} else {
-					String randomCode = RandomStringUtils.random(6);
-					userByUsername.setVerificationCode(randomCode);
-					urepository.save(userByUsername);
-					try {
-						this.sendVerificationEmail(userByUsername);
-						return ResponseEntity.accepted().header(HttpHeaders.HOST, userByUsername.getId().toString())
-								.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
-					} catch (MailAuthenticationException exc) {
-						userByUsername.setAccountVerified(true);
-						userByUsername.setVerificationCode(null);
-						return ResponseEntity.created(null).header(HttpHeaders.HOST, userByUsername.getId().toString())
-								.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host")
-								.contentType(MediaType.TEXT_PLAIN)
-								.body("The email service is not available now, your account has been verified. You can login now");
-					}
-				}
-			} else {
-				return new ResponseEntity<>("Bad credentials", HttpStatus.UNAUTHORIZED);
-			}
-		}
-
-		Authentication auth = authenticationManager.authenticate(creds);
-
-		String jwts = jwtService.getToken(auth.getName());
-
-		Optional<User> currentUser = urepository.findByUsername(auth.getName());
-		if (currentUser.isPresent()) {
-			return ResponseEntity.ok().header(HttpHeaders.AUTHORIZATION, "Bearer " + jwts)
-					.header(HttpHeaders.ALLOW, currentUser.get().getRole())
-					.header(HttpHeaders.HOST, currentUser.get().getId().toString())
-					.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Authorization, Allow", "Host").build();
-		} else {
-			return new ResponseEntity<>("Bad credentials", HttpStatus.UNAUTHORIZED);
-		}
+		return userService.getToken(credentials);
 
 	}
 

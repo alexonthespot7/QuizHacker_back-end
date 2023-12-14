@@ -263,7 +263,7 @@ public class RestPublicControllerTest {
 		String requestBodyWrongUsername = objectMapper.writeValueAsString(credentialsWrongUsername);
 
 		mockMvc.perform(post(requestURI).contentType(MediaType.APPLICATION_JSON).content(requestBodyWrongUsername))
-				.andExpect(status().isUnauthorized()).andExpect(content().string("Bad credentials"));
+				.andExpect(status().isBadRequest());
 
 		// Wrong email case:
 		String wrongEmail = "user1@wrongmail.com";
@@ -273,7 +273,7 @@ public class RestPublicControllerTest {
 		String requestBodyWrongEmail = objectMapper.writeValueAsString(credentialsWrongEmail);
 
 		mockMvc.perform(post(requestURI).contentType(MediaType.APPLICATION_JSON).content(requestBodyWrongEmail))
-				.andExpect(status().isUnauthorized()).andExpect(content().string("Bad credentials"));
+				.andExpect(status().isBadRequest());
 
 		// Wrong password case:
 		String goodUsername = "user1";
@@ -641,8 +641,6 @@ public class RestPublicControllerTest {
 	private Question createDefaultQuestion(Quiz quiz) {
 		Question newQuestion = new Question(quiz);
 		questionRepository.save(newQuestion);
-
-		
 
 		return newQuestion;
 	}
