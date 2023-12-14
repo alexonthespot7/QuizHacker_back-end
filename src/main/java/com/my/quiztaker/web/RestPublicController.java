@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.my.quiztaker.forms.AccountCredentials;
-import com.my.quiztaker.forms.LeaderboardAuthorized;
+import com.my.quiztaker.forms.Leaderboard;
 import com.my.quiztaker.forms.QuizRating;
 import com.my.quiztaker.forms.QuizRatingQuestions;
 import com.my.quiztaker.forms.SignupCredentials;
@@ -46,6 +46,7 @@ import com.my.quiztaker.service.AuthenticationService;
 import com.my.quiztaker.service.CategoryService;
 import com.my.quiztaker.service.DifficultyService;
 import com.my.quiztaker.service.QuizService;
+import com.my.quiztaker.service.UserService;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -87,6 +88,9 @@ public class RestPublicController {
 	
 	@Autowired
 	private QuizService quizService;
+	
+	@Autowired
+	private UserService userService;
 
 	// limit to display only top 10 players:
 	private static final int LIMIT = 10;
@@ -113,13 +117,10 @@ public class RestPublicController {
 	}
 
 	@RequestMapping("/users")
-	public @ResponseBody LeaderboardAuthorized getLeaderboardNoAuth() {
-		List<UserPublic> leaders = urepository.findLeaderBoard();
-		if (leaders.size() > LIMIT) {
-			leaders = leaders.subList(0, LIMIT);
-		}
-
-		return new LeaderboardAuthorized(leaders, -1);
+	public @ResponseBody Leaderboard getLeaderboardNoAuth() {
+		
+		return userService.getLeaderboardNoAuth();
+		
 	}
 
 	@RequestMapping("/quizzes/{quizid}")
