@@ -102,35 +102,9 @@ public class RestAuthenticatedController {
 	@RequestMapping("/usersauth/{userid}")
 	@PreAuthorize("isAuthenticated()")
 	public @ResponseBody Leaderboard getLeaderboardAuth(@PathVariable("userid") Long userId, Authentication auth) {
-		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
-
-		MyUser myUser = (MyUser) auth.getPrincipal();
-		Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
-
-		if (!optUser.isPresent())
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
-
-		if (optUser.get().getId() != userId)
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You can't fetch other user's info");
-
-		List<UserPublic> leaders = userRepository.findLeaderBoard();
-
-		Integer position = this.findPosition(myUser.getUsername(), leaders);
-
-		if (leaders.size() > LIMIT) {
-			leaders = leaders.subList(0, LIMIT);
-		}
-
-		if (position > LIMIT) {
-			UserPublic userRow = userRepository.findRatingByUserId(userId);
-			leaders.add(userRow);
-		}
-
-		if (userRepository.findRatingByUserId(userId) == null)
-			return new Leaderboard(leaders, -1);
-
-		return new Leaderboard(leaders, position);
+		
+		return userService.getLeaderboardAuth(userId, auth);
+		
 	}
 
 	@RequestMapping("/quizzesbyuser/{userid}")

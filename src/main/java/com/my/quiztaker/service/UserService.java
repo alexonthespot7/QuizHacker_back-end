@@ -140,6 +140,17 @@ public class UserService {
 		return this.createPersonalInfoInstance(user, userId);
 	}
 
+	// Method to get leaderboard for authenticated user:
+	public Leaderboard getLeaderboardAuth(Long userId, Authentication auth) {
+		User user = this.checkAuthentication(auth);
+
+		if (user.getId() != userId)
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+					"You are not allowed to get someone else's info");
+
+		return this.createLeaderboardInstanceAuth(user, userId);
+	}
+
 	private List<UserPublic> getTop10(List<UserPublic> leaders) {
 		if (leaders.size() > LIMIT) {
 			leaders = leaders.subList(0, LIMIT);
@@ -296,10 +307,34 @@ public class UserService {
 			position = this.findPosition(username, leaders);
 			userRating = userPublic.getRating();
 		}
-		
+
 		PersonalInfo personalInfo = new PersonalInfo(username, email, userRating, attemptsAmount, position);
 
 		return personalInfo;
+	}
+
+	private Leaderboard createLeaderboardInstanceAuth(User user, Long userId) {
+		UserPublic userPublic = userRepository.findRatingByUserId(userId);
+
+		int position = -1;
+		List<UserPublic> leaders = userRepository.findLeaderBoard();
+
+		// if user doesn't have any attempts, they are not in the leaderboard
+		if (userPublic != null) {
+			String username = user.getUsername();
+			position = this.findPosition(username, leaders);
+		}
+
+		leaders = this.getTop10(leaders);
+
+		if (position > LIMIT) {
+			UserPublic userRow = userRepository.findRatingByUserId(userId);
+			leaders.add(userRow);
+		}
+
+		Leaderboard leaderboard = new Leaderboard(leaders, position);
+
+		return leaderboard;
 	}
 
 	private int findPosition(String username, List<UserPublic> leaders) {
