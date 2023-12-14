@@ -45,6 +45,7 @@ import com.my.quiztaker.model.UserRepository;
 import com.my.quiztaker.service.AuthenticationService;
 import com.my.quiztaker.service.CategoryService;
 import com.my.quiztaker.service.DifficultyService;
+import com.my.quiztaker.service.QuizService;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -83,38 +84,32 @@ public class RestPublicController {
 	
 	@Autowired
 	private DifficultyService difficultyService;
+	
+	@Autowired
+	private QuizService quizService;
 
 	// limit to display only top 10 players:
 	private static final int LIMIT = 10;
 
 	@RequestMapping("/categories")
 	public @ResponseBody List<Category> getCategories() {
+		
 		return categoryService.getCategories();
+	
 	}
 
 	@RequestMapping("/difficulties")
 	public @ResponseBody List<Difficulty> getDifficulties() {
+		
 		return difficultyService.getDifficulties();
+	
 	}
 
 	@RequestMapping("/quizzes")
 	public @ResponseBody List<QuizRatingQuestions> getQuizzes() {
-		List<Quiz> quizzes = (List<Quiz>) quizRepository.findAllPublished();
-		Double rating;
-		QuizRatingQuestions quizRatingQuestions;
-		Integer questions;
 
-		List<QuizRatingQuestions> quizRatingsQuestionsList = new ArrayList<QuizRatingQuestions>();
-
-		for (Quiz quiz : quizzes) {
-			rating = attRepository.findQuizRating(quiz.getQuizId());
-			questions = questRepository.findQuestionsByQuizId(quiz.getQuizId()).size();
-			quizRatingQuestions = new QuizRatingQuestions(quiz, rating, questions);
-
-			quizRatingsQuestionsList.add(quizRatingQuestions);
-		}
-
-		return quizRatingsQuestionsList;
+		return quizService.getQuizzes();
+		
 	}
 
 	@RequestMapping("/users")
