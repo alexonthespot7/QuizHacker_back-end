@@ -70,13 +70,22 @@ public class UserService {
 
 		User user = this.findUserByUsernameOrEmail(usernameOrEmail);
 
-		UsernamePasswordAuthenticationToken creds;
-
 		if (!user.isAccountVerified()) {
 			return this.handleUnverifiedUser(user);
 		}
 
-		creds = new UsernamePasswordAuthenticationToken(user.getUsername(), password);
+		String username = user.getUsername();
+
+		User authenticatedUser = this.authenticateUser(username, password);
+
+		String jwts = jwtService.getToken(username);
+
+		return this.sendResponseWithToken(authenticatedUser, jwts);
+
+	}
+
+	private User authenticateUser(String username, String password) {
+		UsernamePasswordAuthenticationToken creds = new UsernamePasswordAuthenticationToken(username, password);
 
 		Authentication auth = authenticationManager.authenticate(creds);
 
@@ -85,13 +94,11 @@ public class UserService {
 		Optional<User> optionalAuthenticatedUser = userRepository.findByUsername(authenticatedUsername);
 
 		if (!optionalAuthenticatedUser.isPresent())
-			return new ResponseEntity<>("Bad credentials", HttpStatus.UNAUTHORIZED);
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Bad credentials");
 
-		String jwts = jwtService.getToken(authenticatedUsername);
 		User authenticatedUser = optionalAuthenticatedUser.get();
 
-		return this.sendResponseWithToken(authenticatedUser, jwts);
-
+		return authenticatedUser;
 	}
 
 	private ResponseEntity<?> sendResponseWithToken(User user, String jwts) {
