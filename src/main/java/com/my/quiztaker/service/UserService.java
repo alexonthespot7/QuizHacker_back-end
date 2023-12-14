@@ -283,25 +283,21 @@ public class UserService {
 	private PersonalInfo createPersonalInfoInstance(User user, Long userId) {
 		UserPublic userPublic = userRepository.findRatingByUserId(userId);
 
-		// if user doesn't have any attempts, they are not in the leaderboard and have rating 0:
+		// if user doesn't have any attempts, they are not in the leaderboard and have
+		// rating 0:
 		int position = -1;
 		String username = user.getUsername();
 		String email = user.getEmail();
 		Integer userRating = 0;
 		Integer attemptsAmount = attemptRepository.findAttemptsByUserId(userId);
 
-		PersonalInfo personalInfo = new PersonalInfo(username, email, userRating, attemptsAmount, position);
-		
-		if (userPublic == null) {
-			return personalInfo;
+		if (userPublic != null) {
+			List<UserPublic> leaders = userRepository.findLeaderBoard();
+			position = this.findPosition(username, leaders);
+			userRating = userPublic.getRating();
 		}
 		
-		List<UserPublic> leaders = userRepository.findLeaderBoard();
-		position = this.findPosition(username, leaders);
-		personalInfo.setPosition(position);
-		
-		userRating = userPublic.getRating();
-		personalInfo.setScore(userRating);
+		PersonalInfo personalInfo = new PersonalInfo(username, email, userRating, attemptsAmount, position);
 
 		return personalInfo;
 	}
