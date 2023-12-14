@@ -21,6 +21,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -140,7 +141,7 @@ public class RestPublicController {
 
 	}
 
-	@RequestMapping(value = "/signup", method = RequestMethod.POST)
+	@PostMapping("/signup")
 	public ResponseEntity<?> signUp(@RequestBody SignupCredentials creds)
 			throws UnsupportedEncodingException, MessagingException {
 		
@@ -148,27 +149,14 @@ public class RestPublicController {
 		
 	}
 
-	@RequestMapping(value = "/verify/{userid}", method = RequestMethod.POST)
+	@PutMapping("/verify/{userid}")
 	public ResponseEntity<?> verifyUser(@RequestBody String token, @PathVariable("userid") Long userId) {
-		if (!urepository.findById(userId).isPresent())
-			return new ResponseEntity<>("Wrong user id", HttpStatus.BAD_REQUEST); // 400
-
-		if (!urepository.findById(userId).get().isAccountVerified()) {
-			User user = urepository.findById(userId).get();
-			if (user.getVerificationCode().equals(token)) {
-				user.setVerificationCode(null);
-				user.setAccountVerified(true);
-				urepository.save(user);
-				return new ResponseEntity<>("Verification went well", HttpStatus.OK);
-			} else {
-				return new ResponseEntity<>("Verification code is incorrect", HttpStatus.CONFLICT); // 409
-			}
-		} else {
-			return new ResponseEntity<>("The user is already verified", HttpStatus.BAD_REQUEST); // 400
-		}
+		
+		return userService.verifyUser(token, userId);
+		
 	}
 
-	@RequestMapping(value = "/resetpassword", method = RequestMethod.POST)
+	@PutMapping("/resetpassword")
 	public ResponseEntity<?> resetPassword(@RequestBody String email)
 			throws UnsupportedEncodingException, MessagingException {
 		Optional<User> user = urepository.findByEmail(email);

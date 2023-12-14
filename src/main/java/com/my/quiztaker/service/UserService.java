@@ -92,6 +92,21 @@ public class UserService {
 		return mailService.tryToSendVerificationMail(newUser);
 	}
 
+	// Verify user method
+	public ResponseEntity<?> verifyUser(String token, Long userId) {
+		User user = this.checkUserById(userId);
+
+		if (user.isAccountVerified())
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The user is already verified");
+
+		if (!user.getVerificationCode().equals(token))
+			return new ResponseEntity<>("Verification code is incorrect", HttpStatus.CONFLICT); // 409
+
+		mailService.verifyUser(user);
+
+		return new ResponseEntity<>("Verification went well", HttpStatus.OK);
+	}
+
 	private List<UserPublic> getTop10(List<UserPublic> leaders) {
 		if (leaders.size() > LIMIT) {
 			leaders = leaders.subList(0, LIMIT);
@@ -181,5 +196,16 @@ public class UserService {
 		userRepository.save(newUser);
 
 		return newUser;
+	}
+
+	private User checkUserById(Long userId) {
+		Optional<User> optionalUser = userRepository.findById(userId);
+
+		if (!optionalUser.isPresent())
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Wrong user id");
+
+		User user = optionalUser.get();
+
+		return user;
 	}
 }

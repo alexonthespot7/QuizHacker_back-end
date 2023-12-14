@@ -23,6 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -424,17 +425,23 @@ public class RestPublicControllerTest {
 		// Wrong user id case:
 		String worngIdRequestURI = requestURI + Long.valueOf(12);
 
-		mockMvc.perform(post(worngIdRequestURI).contentType(MediaType.APPLICATION_JSON).content(verificationCode))
-				.andExpect(status().isBadRequest()).andExpect(content().string("Wrong user id"));
+		MvcResult result = mockMvc.perform(put(worngIdRequestURI).contentType(MediaType.APPLICATION_JSON).content(verificationCode))
+				.andExpect(status().isBadRequest()).andReturn();
+		
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("Wrong user id");
 
 		// User is already verified case:
 		User user1 = userRepository.findByUsername("user1").get();
 		Long user1Id = user1.getId();
 
 		String allreadyVerifiedRequestURI = requestURI + user1Id;
-		mockMvc.perform(
-				post(allreadyVerifiedRequestURI).contentType(MediaType.APPLICATION_JSON).content(verificationCode))
-				.andExpect(status().isBadRequest()).andExpect(content().string("The user is already verified"));
+		result = mockMvc.perform(
+				put(allreadyVerifiedRequestURI).contentType(MediaType.APPLICATION_JSON).content(verificationCode))
+				.andExpect(status().isBadRequest()).andReturn();
+		
+		message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("The user is already verified");
 	}
 
 	@Test
@@ -452,7 +459,7 @@ public class RestPublicControllerTest {
 
 		String rightIdRequestURI = requestURI + unverifiedUserId;
 
-		mockMvc.perform(post(rightIdRequestURI).contentType(MediaType.APPLICATION_JSON).content(verificationCode))
+		mockMvc.perform(put(rightIdRequestURI).contentType(MediaType.APPLICATION_JSON).content(verificationCode))
 				.andExpect(status().isConflict()).andExpect(content().string("Verification code is incorrect"));
 	}
 
@@ -471,7 +478,7 @@ public class RestPublicControllerTest {
 
 		String rightIdRequestURI = requestURI + unverifiedUserId;
 
-		mockMvc.perform(post(rightIdRequestURI).contentType(MediaType.APPLICATION_JSON).content(verificationCode))
+		mockMvc.perform(put(rightIdRequestURI).contentType(MediaType.APPLICATION_JSON).content(verificationCode))
 				.andExpect(status().isOk());
 	}
 
@@ -482,7 +489,7 @@ public class RestPublicControllerTest {
 
 		String emailNotFoundCase = "wrong@mail.com";
 
-		mockMvc.perform(post(requestURI).contentType(MediaType.APPLICATION_JSON).content(emailNotFoundCase))
+		mockMvc.perform(put(requestURI).contentType(MediaType.APPLICATION_JSON).content(emailNotFoundCase))
 				.andExpect(status().isBadRequest());
 	}
 
@@ -496,7 +503,7 @@ public class RestPublicControllerTest {
 
 		this.createCustomUser(unverifiedUsername, unverifiedEmail, false);
 
-		mockMvc.perform(post(requestURI).contentType(MediaType.APPLICATION_JSON).content(unverifiedEmail))
+		mockMvc.perform(put(requestURI).contentType(MediaType.APPLICATION_JSON).content(unverifiedEmail))
 				.andExpect(status().isUnauthorized())
 				.andExpect(content().string("User with this email (" + unverifiedEmail + ") is not verified"));
 	}
@@ -509,7 +516,7 @@ public class RestPublicControllerTest {
 		String goodEmail = "user1@mail.com";
 
 		if (this.springMailUsername.equals("default_value")) {
-			mockMvc.perform(post(requestURI).contentType(MediaType.APPLICATION_JSON).content(goodEmail))
+			mockMvc.perform(put(requestURI).contentType(MediaType.APPLICATION_JSON).content(goodEmail))
 					.andExpect(status().isInternalServerError())
 					.andExpect(content().string("This service isn't available at the moment"));
 		} else {

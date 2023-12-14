@@ -92,7 +92,7 @@ public class MailService {
 		}
 	}
 	
-	private void verifyUser(User user) {
+	public void verifyUser(User user) {
 		user.setAccountVerified(true);
 		user.setVerificationCode(null);
 		userRepository.save(user);
