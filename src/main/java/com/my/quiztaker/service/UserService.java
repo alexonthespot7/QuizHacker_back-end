@@ -14,11 +14,13 @@ import org.springframework.mail.MailAuthenticationException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.my.quiztaker.forms.AccountCredentials;
 import com.my.quiztaker.forms.Leaderboard;
+import com.my.quiztaker.forms.SignupCredentials;
 import com.my.quiztaker.forms.UserPublic;
 import com.my.quiztaker.model.User;
 import com.my.quiztaker.model.UserRepository;
@@ -55,14 +57,7 @@ public class UserService {
 		return leaderboard;
 	}
 
-	private List<UserPublic> getTop10(List<UserPublic> leaders) {
-		if (leaders.size() > LIMIT) {
-			leaders = leaders.subList(0, LIMIT);
-		}
-
-		return leaders;
-	}
-
+	// Login method
 	public ResponseEntity<?> getToken(AccountCredentials credentials)
 			throws MessagingException, UnsupportedEncodingException {
 		String usernameOrEmail = credentials.getUsername();
@@ -82,6 +77,54 @@ public class UserService {
 
 		return this.sendResponseWithToken(authenticatedUser, jwts);
 
+	}
+
+	// Sign up method
+	public ResponseEntity<?> signUp(SignupCredentials creds) throws UnsupportedEncodingException, MessagingException {
+		String email = creds.getEmail();
+		String username = creds.getUsername();
+		String password = creds.getPassword();
+
+		this.checkEmailAndUsername(email, username);
+
+		User newUser = this.createUnverifiedUser(email, username, password);
+
+		return mailService.tryToSendVerificationMail(newUser);
+	}
+
+	private List<UserPublic> getTop10(List<UserPublic> leaders) {
+		if (leaders.size() > LIMIT) {
+			leaders = leaders.subList(0, LIMIT);
+		}
+
+		return leaders;
+	}
+
+	private User findUserByUsernameOrEmail(String usernameOrEmail) {
+		Optional<User> optionalUser = userRepository.findByEmail(usernameOrEmail);
+
+		if (!optionalUser.isPresent()) {
+			optionalUser = userRepository.findByUsername(usernameOrEmail);
+			if (!optionalUser.isPresent())
+				throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+						"User wasn't found for provided username or email");
+		}
+
+		User user = optionalUser.get();
+
+		return user;
+	}
+
+	private ResponseEntity<?> handleUnverifiedUser(User user) throws MessagingException, UnsupportedEncodingException {
+		this.setVerificationCode(user);
+
+		return mailService.tryToSendVerificationMail(user);
+	}
+
+	private void setVerificationCode(User user) {
+		String randomCode = RandomStringUtils.random(6);
+		user.setVerificationCode(randomCode);
+		userRepository.save(user);
 	}
 
 	private User authenticateUser(String username, String password) {
@@ -110,49 +153,33 @@ public class UserService {
 				.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Authorization, Allow", "Host").build();
 	}
 
-	private ResponseEntity<?> handleUnverifiedUser(User user) throws MessagingException, UnsupportedEncodingException {
-		this.setVerificationCode(user);
-
-		try {
-			mailService.sendVerificationEmail(user);
-
-			return ResponseEntity.accepted().header(HttpHeaders.HOST, user.getId().toString())
-					.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
-
-		} catch (MailAuthenticationException exc) {
-			this.verifyUser(user);
-
-			return ResponseEntity.created(null).header(HttpHeaders.HOST, user.getId().toString())
-					.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").contentType(MediaType.TEXT_PLAIN)
-					.body("The email service is not available now, your account has been verified. You can login now");
-
-		}
+	private void checkEmailAndUsername(String email, String username) {
+		this.checkEmail(email);
+		this.checkUsername(username);
 	}
 
-	private void setVerificationCode(User user) {
+	private void checkEmail(String email) {
+		Optional<User> optionalUserByEmail = userRepository.findByEmail(email);
+
+		if (optionalUserByEmail.isPresent())
+			throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, "Email is already in use");
+	}
+
+	private void checkUsername(String username) {
+		Optional<User> optionalUserByUsername = userRepository.findByUsername(username);
+
+		if (optionalUserByUsername.isPresent())
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "Username is already in use");
+	}
+
+	private User createUnverifiedUser(String email, String username, String password) {
+		BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
+		String hashPwd = bc.encode(password);
 		String randomCode = RandomStringUtils.random(6);
-		user.setVerificationCode(randomCode);
-		userRepository.save(user);
-	}
 
-	private void verifyUser(User user) {
-		user.setAccountVerified(true);
-		user.setVerificationCode(null);
-		userRepository.save(user);
-	}
+		User newUser = new User(username, hashPwd, "USER", email, randomCode, false);
+		userRepository.save(newUser);
 
-	private User findUserByUsernameOrEmail(String usernameOrEmail) {
-		Optional<User> optionalUser = userRepository.findByEmail(usernameOrEmail);
-
-		if (!optionalUser.isPresent()) {
-			optionalUser = userRepository.findByUsername(usernameOrEmail);
-			if (!optionalUser.isPresent())
-				throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-						"User wasn't found for provided username or email");
-		}
-
-		User user = optionalUser.get();
-
-		return user;
+		return newUser;
 	}
 }

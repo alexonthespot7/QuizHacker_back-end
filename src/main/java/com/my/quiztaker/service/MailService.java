@@ -3,17 +3,25 @@ package com.my.quiztaker.service;
 import java.io.UnsupportedEncodingException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.mail.MailAuthenticationException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 import com.my.quiztaker.model.User;
+import com.my.quiztaker.model.UserRepository;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 
 @Service
 public class MailService {
+	@Autowired
+	private UserRepository userRepository;
+	
 	@Autowired
 	private JavaMailSender mailSender;
 
@@ -65,5 +73,28 @@ public class MailService {
 		helper.setText(content, true);
 
 		mailSender.send(message);
+	}
+	
+	public ResponseEntity<?> tryToSendVerificationMail(User user)
+			throws MessagingException, UnsupportedEncodingException {
+		try {
+			this.sendVerificationEmail(user);
+
+			return ResponseEntity.accepted().header(HttpHeaders.HOST, user.getId().toString())
+					.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
+
+		} catch (MailAuthenticationException exc) {
+			this.verifyUser(user);
+
+			return ResponseEntity.created(null).header(HttpHeaders.HOST, user.getId().toString())
+					.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").contentType(MediaType.TEXT_PLAIN)
+					.body("The email service is not available now, your account has been verified. You can login now");
+		}
+	}
+	
+	private void verifyUser(User user) {
+		user.setAccountVerified(true);
+		user.setVerificationCode(null);
+		userRepository.save(user);
 	}
 }

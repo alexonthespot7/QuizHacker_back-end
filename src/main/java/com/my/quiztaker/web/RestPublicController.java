@@ -143,29 +143,9 @@ public class RestPublicController {
 	@RequestMapping(value = "/signup", method = RequestMethod.POST)
 	public ResponseEntity<?> signUp(@RequestBody SignupCredentials creds)
 			throws UnsupportedEncodingException, MessagingException {
-		BCryptPasswordEncoder bc = new BCryptPasswordEncoder();
-		String hashPwd = bc.encode(creds.getPassword());
-		String randomCode = RandomStringUtils.random(6);
-
-		if (urepository.findByUsername(creds.getUsername()).isPresent()) {
-			return new ResponseEntity<>("Username is already in use", HttpStatus.CONFLICT);
-		} else if (urepository.findByEmail(creds.getEmail()).isPresent()) {
-			return new ResponseEntity<>("Email is already in use", HttpStatus.NOT_ACCEPTABLE);
-		} else {
-			User newUser = new User(creds.getUsername(), hashPwd, "USER", creds.getEmail(), randomCode, false);
-			urepository.save(newUser);
-			try {
-				this.sendVerificationEmail(newUser);
-				return ResponseEntity.ok().header(HttpHeaders.HOST, newUser.getId().toString())
-						.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
-			} catch (MailAuthenticationException exc) {
-				newUser.setAccountVerified(true);
-				newUser.setVerificationCode(null);
-				return ResponseEntity.created(null).header(HttpHeaders.HOST, newUser.getId().toString())
-						.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").contentType(MediaType.TEXT_PLAIN)
-						.body("The email service is not available now, your account has been verified. You can login now");
-			}
-		}
+		
+		return userService.signUp(creds);
+		
 	}
 
 	@RequestMapping(value = "/verify/{userid}", method = RequestMethod.POST)
