@@ -124,33 +124,9 @@ public class RestAuthenticatedController {
 	@PreAuthorize("isAuthenticated()")
 	public @ResponseBody List<QuizRatingQuestions> getPersonalQuizzes(@PathVariable("userid") Long userId,
 			Authentication auth) {
-		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
-			MyUser myUser = (MyUser) auth.getPrincipal();
-			Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
-
-			if (optUser.isPresent() && optUser.get().getId() == userId) {
-				List<Quiz> quizzesOfUser = quizRepository.findQuizzesByUserId(userId);
-				Double rating;
-				QuizRatingQuestions quizRatingQuestions;
-				Integer questions;
-
-				List<QuizRatingQuestions> quizRatingsQuestionss = new ArrayList<QuizRatingQuestions>();
-
-				for (Quiz quiz : quizzesOfUser) {
-					rating = attemptRepository.findQuizRating(quiz.getQuizId());
-					questions = questionRepository.findQuestionsByQuizId(quiz.getQuizId()).size();
-					quizRatingQuestions = new QuizRatingQuestions(quiz, rating, questions);
-
-					quizRatingsQuestionss.add(quizRatingQuestions);
-				}
-
-				return quizRatingsQuestionss;
-			} else {
-				throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
-			}
-		} else {
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
-		}
+		
+		return quizService.getPersonalQuizzes(userId, auth);
+		
 	}
 
 	@RequestMapping(value = "/createquiz")

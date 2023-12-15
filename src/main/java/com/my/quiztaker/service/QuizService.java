@@ -34,6 +34,9 @@ public class QuizService {
 	private QuestionRepository questionRepository;
 
 	@Autowired
+	private UserRepository userRepository;
+
+	@Autowired
 	private CommonService commonService;
 
 	// Method to get published quizzes with its rating and amount of questions;
@@ -70,10 +73,20 @@ public class QuizService {
 		return quizRatingQuestionsList;
 	}
 
+	// Method to get quizzes created by authenticated user:
+	public List<QuizRatingQuestions> getPersonalQuizzes(Long userId, Authentication auth) {
+		commonService.checkAuthentication(auth, userId);
+
+		List<Quiz> quizzesOfUser = quizRepository.findQuizzesByUserId(userId);
+		
+		List<QuizRatingQuestions> quizRatingQuestionsList = this
+				.makeQuizRatingQuestionsListFromQuizzes(quizzesOfUser);
+
+		return quizRatingQuestionsList;
+	}
+
 	private List<QuizRatingQuestions> makeQuizRatingQuestionsListFromQuizzes(List<Quiz> quizzes) {
-		return quizzes.stream()
-	            .map(this::makeQuizRatingQuestionsFromQuiz)
-	            .collect(Collectors.toList());
+		return quizzes.stream().map(this::makeQuizRatingQuestionsFromQuiz).collect(Collectors.toList());
 	}
 
 	private QuizRatingQuestions makeQuizRatingQuestionsFromQuiz(Quiz quiz) {
