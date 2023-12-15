@@ -75,6 +75,14 @@ public class CommonService {
 		userRepository.save(user);
 	}
 
+	// Method to check the status of quiz: user can't change published quizzes
+	public void checkQuizStatus(Quiz quiz) {
+		String quizStatus = quiz.getStatus();
+		if (quizStatus.equals("Published"))
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"You can't update the quiz that is already published");
+	}
+
 	// Method to check if the question's in db by ID:
 	public Question findQuestionById(Long questionId) {
 		Optional<Question> optionalQuestion = questionRepository.findById(questionId);

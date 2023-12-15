@@ -118,6 +118,8 @@ public class QuizService {
 
 		commonService.checkAuthenticationAndRights(auth, userIdOfQuizInDB);
 
+		commonService.checkQuizStatus(quizInDB);
+
 		this.updateQuiz(quizInDB, quizUpdated);
 
 		return new ResponseEntity<>("Quiz info was updated successfully", HttpStatus.OK);
@@ -142,6 +144,7 @@ public class QuizService {
 		Long idOfQuizOwner = quiz.getUser().getId();
 
 		commonService.checkAuthenticationAndRights(auth, idOfQuizOwner);
+		commonService.checkQuizStatus(quiz);
 
 		quizRepository.deleteById(quizId);
 

@@ -51,7 +51,7 @@ import jakarta.transaction.Transactional;
 @TestInstance(Lifecycle.PER_CLASS)
 @Transactional
 public class RestPublicControllerTest {
-	private static final String END_POINT_PATH = "";
+	private static final String END_POINT_PATH = "/api";
 
 	@Value("${spring.mail.username}")
 	private String springMailUsername;

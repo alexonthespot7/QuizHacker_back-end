@@ -53,6 +53,8 @@ public class QuestionService {
 
 		commonService.checkAuthenticationAndRights(auth, userIdOfQuizInDB);
 
+		commonService.checkQuizStatus(quizInDB);
+		
 		this.saveQuestions(questions);
 
 		return new ResponseEntity<>("Everything was saved successfully", HttpStatus.OK);
@@ -61,11 +63,14 @@ public class QuestionService {
 	// Method to delete question by id and authentication instance:
 	public ResponseEntity<?> deleteQuestionById(Long questionId, Authentication auth) {
 		Question question = commonService.findQuestionById(questionId);
-
-		Long idOfQuestionOwner = question.getQuiz().getUser().getId();
+		
+		Quiz quiz = question.getQuiz();
+		Long idOfQuestionOwner = quiz.getUser().getId();
 
 		commonService.checkAuthenticationAndRights(auth, idOfQuestionOwner);
 
+		commonService.checkQuizStatus(quiz);
+		
 		questionRepository.deleteById(questionId);
 
 		return new ResponseEntity<>("Question was deleted successfully", HttpStatus.OK);

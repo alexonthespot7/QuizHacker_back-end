@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -27,6 +28,7 @@ import com.my.quiztaker.service.QuizService;
 import com.my.quiztaker.service.UserService;
 
 @RestController
+@RequestMapping("/api")
 public class RestAuthenticatedController {
 	@Autowired
 	private QuestionService questionService;

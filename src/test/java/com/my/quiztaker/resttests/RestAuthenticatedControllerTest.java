@@ -56,7 +56,7 @@ import jakarta.transaction.Transactional;
 @TestInstance(Lifecycle.PER_CLASS)
 @Transactional
 public class RestAuthenticatedControllerTest {
-	private static final String END_POINT_PATH = "";
+	private static final String END_POINT_PATH = "/api";
 
 	private String jwtToken;
 
@@ -450,20 +450,23 @@ public class RestAuthenticatedControllerTest {
 	@Rollback
 	public void testUpdateQuizByAuthCategoryNotFoundCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/updatequiz/";
+		String createQuizRequestURI = END_POINT_PATH + "/createquiz";
+
+		MvcResult result = mockMvc.perform(post(createQuizRequestURI).header("Authorization", jwtToken))
+				.andExpect(status().isOk()).andReturn();
+
+		Long quizToUpdateId = Long.valueOf(result.getResponse().getHeader("Host"));
+
+		Quiz quizToUpdate = quizRepository.findById(quizToUpdateId).get();
 
 		User user1 = userRepository.findByUsername("user1").get();
 		Long user1Id = user1.getId();
-
-		List<Quiz> quizzesUser1 = quizRepository.findQuizzesByUserId(user1Id);
-		Quiz quizToUpdate = quizzesUser1.get(0);
-		Long quizToUpdateId = quizToUpdate.getQuizId();
-
 		QuizUpdate quizUpdateCategoryNotFound = this.createQuizUpdateInstance(quizToUpdate, user1Id);
 		quizUpdateCategoryNotFound.setCategory(Long.valueOf(20));
 
 		String requestBodyCategoryNotFound = objectMapper.writeValueAsString(quizUpdateCategoryNotFound);
 		String requestURICategoryNotFound = requestURI + quizToUpdateId;
-		MvcResult result = mockMvc
+		result = mockMvc
 				.perform(put(requestURICategoryNotFound).header("Authorization", jwtToken)
 						.contentType(MediaType.APPLICATION_JSON).content(requestBodyCategoryNotFound))
 				.andExpect(status().isBadRequest()).andReturn();
@@ -476,20 +479,23 @@ public class RestAuthenticatedControllerTest {
 	@Rollback
 	public void testUpdateQuizByAuthDifficultyNotFoundCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/updatequiz/";
+		String createQuizRequestURI = END_POINT_PATH + "/createquiz";
+
+		MvcResult result = mockMvc.perform(post(createQuizRequestURI).header("Authorization", jwtToken))
+				.andExpect(status().isOk()).andReturn();
+
+		Long quizToUpdateId = Long.valueOf(result.getResponse().getHeader("Host"));
+
+		Quiz quizToUpdate = quizRepository.findById(quizToUpdateId).get();
 
 		User user1 = userRepository.findByUsername("user1").get();
 		Long user1Id = user1.getId();
-
-		List<Quiz> quizzesUser1 = quizRepository.findQuizzesByUserId(user1Id);
-		Quiz quizToUpdate = quizzesUser1.get(0);
-		Long quizToUpdateId = quizToUpdate.getQuizId();
-
 		QuizUpdate quizUpdateDifficultyNotFound = this.createQuizUpdateInstance(quizToUpdate, user1Id);
 		quizUpdateDifficultyNotFound.setDifficulty(Long.valueOf(20));
 
 		String requestBodyDifficultyNotFound = objectMapper.writeValueAsString(quizUpdateDifficultyNotFound);
 		String requestURIDifficultyNotFound = requestURI + quizToUpdateId;
-		MvcResult result = mockMvc
+		result = mockMvc
 				.perform(put(requestURIDifficultyNotFound).header("Authorization", jwtToken)
 						.contentType(MediaType.APPLICATION_JSON).content(requestBodyDifficultyNotFound))
 				.andExpect(status().isBadRequest()).andReturn();
@@ -500,7 +506,7 @@ public class RestAuthenticatedControllerTest {
 
 	@Test
 	@Rollback
-	public void testUpdateQuizByAuthGoodCase() throws Exception {
+	public void testUpdateQuizByAuthQuizPublishedCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/updatequiz/";
 
 		User user1 = userRepository.findByUsername("user1").get();
@@ -513,6 +519,42 @@ public class RestAuthenticatedControllerTest {
 		String status = quizToUpdate.getStatus();
 		Double rating = attemptRepository.findQuizRating(quizToUpdateId);
 
+		String updatedTitle = "My title";
+		String updatedDescription = "My description";
+		Integer updatedMinutes = 2;
+		Category itCategory = categoryRepository.findByName("IT").get();
+		Long itCategoryId = itCategory.getCategoryId();
+
+		Difficulty easyDifficulty = difficultyRepository.findByName("Easy").get();
+		Long easyDifficultyId = easyDifficulty.getDifficultyId();
+
+		QuizUpdate quizUpdateInstance = new QuizUpdate(quizToUpdateId, updatedTitle, updatedDescription,
+				easyDifficultyId, updatedMinutes, rating, status, user1Id, itCategoryId);
+
+		String requestBody = objectMapper.writeValueAsString(quizUpdateInstance);
+		String requestURIGood = requestURI + quizToUpdateId;
+		mockMvc.perform(put(requestURIGood).header("Authorization", jwtToken).contentType(MediaType.APPLICATION_JSON)
+				.content(requestBody)).andExpect(status().isConflict());
+	}
+
+	@Test
+	@Rollback
+	public void testUpdateQuizByAuthGoodCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/updatequiz/";
+		String createQuizRequestURI = END_POINT_PATH + "/createquiz";
+
+		MvcResult result = mockMvc.perform(post(createQuizRequestURI).header("Authorization", jwtToken))
+				.andExpect(status().isOk()).andReturn();
+
+		Long quizToUpdateId = Long.valueOf(result.getResponse().getHeader("Host"));
+
+		Quiz quizToUpdate = quizRepository.findById(quizToUpdateId).get();
+
+		String status = quizToUpdate.getStatus();
+		Double rating = attemptRepository.findQuizRating(quizToUpdateId);
+
+		User user1 = userRepository.findByUsername("user1").get();
+		Long user1Id = user1.getId();
 		String updatedTitle = "My title";
 		String updatedDescription = "My description";
 		Integer updatedMinutes = 2;
@@ -587,7 +629,7 @@ public class RestAuthenticatedControllerTest {
 
 	@Test
 	@Rollback
-	public void testSaveQuestionsGoodCase() throws Exception {
+	public void testSaveQuestionsPublishedQuizCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/savequestions/";
 
 		User user1 = userRepository.findByUsername("user1").get();
@@ -613,13 +655,7 @@ public class RestAuthenticatedControllerTest {
 
 		String requestURIGood = requestURI + quizOfUser1ToUpdateId;
 		mockMvc.perform(put(requestURIGood).header("Authorization", jwtToken).contentType(MediaType.APPLICATION_JSON)
-				.content(requestBody)).andExpect(status().isOk());
-
-		quizzesUser1 = quizRepository.findQuizzesByUserId(user1Id);
-		Quiz quizOfUser1Updated = quizzesUser1.get(0);
-
-		assertThat(quizOfUser1Updated.getQuestions()).hasSize(3);
-		assertThat(quizOfUser1Updated.getQuestions().get(0).getText()).isEqualTo("Custom question");
+				.content(requestBody)).andExpect(status().isConflict());
 	}
 
 	@Test
@@ -657,7 +693,7 @@ public class RestAuthenticatedControllerTest {
 
 	@Test
 	@Rollback
-	public void testDeleteQuestionByIdGoodCase() throws Exception {
+	public void testDeleteQuestionByIdPublishedQuizCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/deletequestion/";
 
 		User user1 = userRepository.findByUsername("user1").get();
@@ -667,10 +703,30 @@ public class RestAuthenticatedControllerTest {
 		Question question1OfQuiz1OfUser1 = questionsOfQuiz1OfUser1.get(0);
 		Long question1OfQuiz1OfUser1Id = question1OfQuiz1OfUser1.getQuestionId();
 
-		String requestURINotFound = requestURI + question1OfQuiz1OfUser1Id;
-		mockMvc.perform(delete(requestURINotFound).header("Authorization", jwtToken)).andExpect(status().isOk());
+		String requestURIPublishedQuiz = requestURI + question1OfQuiz1OfUser1Id;
+		MvcResult result = mockMvc.perform(delete(requestURIPublishedQuiz).header("Authorization", jwtToken))
+				.andExpect(status().isConflict()).andReturn();
 
-		Optional<Question> optionalQuestionNull = questionRepository.findById(question1OfQuiz1OfUser1Id);
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("You can't update the quiz that is already published");
+	}
+
+	@Test
+	@Rollback
+	public void testDeleteQuestionByIdGoodCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/deletequestion/";
+
+		User user1 = userRepository.findByUsername("user1").get();
+		List<Quiz> quizzesOfUser1 = user1.getQuizzes();
+
+		Quiz quizToUpdate = quizzesOfUser1.get(1);
+		Question questionToDelete = quizToUpdate.getQuestions().get(0);
+		Long questionId = questionToDelete.getQuestionId();
+
+		String requestURIGood = requestURI + questionId;
+		mockMvc.perform(delete(requestURIGood).header("Authorization", jwtToken)).andExpect(status().isOk());
+
+		Optional<Question> optionalQuestionNull = questionRepository.findById(questionId);
 		assertThat(optionalQuestionNull).isNotPresent();
 	}
 
@@ -1025,7 +1081,7 @@ public class RestAuthenticatedControllerTest {
 
 	@Test
 	@Rollback
-	public void testDeleteQuizByIdGoodCase() throws Exception {
+	public void testDeleteQuizByIdPublishedQuizCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/deletequiz/";
 
 		User user1 = userRepository.findByUsername("user1").get();
@@ -1036,8 +1092,24 @@ public class RestAuthenticatedControllerTest {
 
 		String requestURIGoodCase = requestURI + quiz1User1Id;
 
+		mockMvc.perform(delete(requestURIGoodCase).header("Authorization", jwtToken)).andExpect(status().isConflict());
+	}
+	
+	@Test
+	@Rollback
+	public void testDeleteQuizByIdGoodCase() throws Exception {
+		String requestURI = END_POINT_PATH + "/deletequiz/";
+
+		User user1 = userRepository.findByUsername("user1").get();
+		Long user1Id = user1.getId();
+		List<Quiz> user1Quizzes = quizRepository.findQuizzesByUserId(user1Id);
+		Quiz quiz2User1 = user1Quizzes.get(1);
+		Long quiz2User1Id = quiz2User1.getQuizId();
+
+		String requestURIGoodCase = requestURI + quiz2User1Id;
+
 		mockMvc.perform(delete(requestURIGoodCase).header("Authorization", jwtToken)).andExpect(status().isOk());
-		Optional<Quiz> optionalQuizDeleted = quizRepository.findById(quiz1User1Id);
+		Optional<Quiz> optionalQuizDeleted = quizRepository.findById(quiz2User1Id);
 		assertThat(optionalQuizDeleted).isNotPresent();
 	}
 
