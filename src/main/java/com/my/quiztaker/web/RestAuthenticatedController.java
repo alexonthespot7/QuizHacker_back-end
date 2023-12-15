@@ -169,30 +169,9 @@ public class RestAuthenticatedController {
 	@RequestMapping(value = "/publishquiz/{quizid}", method = RequestMethod.POST)
 	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<?> publishQuiz(@PathVariable("quizid") Long quizId, Authentication auth) {
-		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
-			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED);
-
-		MyUser myUser = (MyUser) auth.getPrincipal();
-		Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
-		Optional<Quiz> optQuiz = quizRepository.findById(quizId);
-
-		if (!optUser.isPresent())
-			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED);
-
-		User user = optUser.get();
-
-		if (!optQuiz.isPresent())
-			return new ResponseEntity<>("The quiz was not found for provided ID", HttpStatus.BAD_REQUEST);
-
-		Quiz quiz = optQuiz.get();
-
-		if (user.getId() != quiz.getUser().getId())
-			return new ResponseEntity<>("You can't change someone else's quiz", HttpStatus.UNAUTHORIZED);
-
-		quiz.setStatus("Published");
-		quizRepository.save(quiz);
-
-		return new ResponseEntity<>("Quiz was published successfully", HttpStatus.OK);
+		
+		return quizService.publishQuiz(quizId, auth);
+		
 	}
 
 	@RequestMapping(value = "/sendattempt/{quizid}", method = RequestMethod.POST)

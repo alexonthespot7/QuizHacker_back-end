@@ -129,7 +129,18 @@ public class QuizService {
 		return new ResponseEntity<>("Quiz info was updated successfully", HttpStatus.OK);
 	}
 	
-	
+	// Method to publish the quiz by quiz id and authentication instance:
+	public ResponseEntity<?> publishQuiz(Long quizId, Authentication auth) {
+		Quiz quiz = commonService.checkQuizById(quizId);
+		Long idOfQuizOwner = quiz.getUser().getId();
+		
+		commonService.checkAuthenticationAndRights(auth, idOfQuizOwner);
+
+		quiz.setStatus("Published");
+		quizRepository.save(quiz);
+
+		return new ResponseEntity<>("Quiz was published successfully", HttpStatus.OK);
+	}
 
 	private List<QuizRatingQuestions> makeQuizRatingQuestionsListFromQuizzes(List<Quiz> quizzes) {
 		return quizzes.stream().map(this::makeQuizRatingQuestionsFromQuiz).collect(Collectors.toList());

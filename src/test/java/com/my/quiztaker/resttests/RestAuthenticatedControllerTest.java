@@ -555,8 +555,9 @@ public class RestAuthenticatedControllerTest {
 
 		String requestBodyQuizNotFound = objectMapper.writeValueAsString(questionsQuizNotFound);
 		String requestURIQuizNotFound = requestURI + Long.valueOf(20);
-		MvcResult result = mockMvc.perform(put(requestURIQuizNotFound).header("Authorization", jwtToken)
-				.contentType(MediaType.APPLICATION_JSON).content(requestBodyQuizNotFound))
+		MvcResult result = mockMvc
+				.perform(put(requestURIQuizNotFound).header("Authorization", jwtToken)
+						.contentType(MediaType.APPLICATION_JSON).content(requestBodyQuizNotFound))
 				.andExpect(status().isBadRequest()).andReturn();
 		String message = result.getResponse().getErrorMessage();
 		assertThat(message).isEqualTo("There's no quiz with this id");
@@ -630,9 +631,9 @@ public class RestAuthenticatedControllerTest {
 		String requestURI = END_POINT_PATH + "/deletequestion/";
 
 		String requestURINotFound = requestURI + Long.valueOf(100);
-		MvcResult result = mockMvc.perform(delete(requestURINotFound).header("Authorization", jwtToken)).andExpect(status().isBadRequest())
-				.andReturn();
-		
+		MvcResult result = mockMvc.perform(delete(requestURINotFound).header("Authorization", jwtToken))
+				.andExpect(status().isBadRequest()).andReturn();
+
 		String message = result.getResponse().getErrorMessage();
 		assertThat(message).isEqualTo("One or more of your questions that supposed to be in db can't be found in db");
 	}
@@ -650,10 +651,9 @@ public class RestAuthenticatedControllerTest {
 		Long question1OfQuiz1OfUser2Id = question1OfQuiz1OfUser2.getQuestionId();
 
 		String requestURIOtherUserQuiz = requestURI + question1OfQuiz1OfUser2Id;
-		MvcResult result =  mockMvc.perform(delete(requestURIOtherUserQuiz).header("Authorization", jwtToken))
-				.andExpect(status().isUnauthorized())
-				.andReturn();
-		
+		MvcResult result = mockMvc.perform(delete(requestURIOtherUserQuiz).header("Authorization", jwtToken))
+				.andExpect(status().isUnauthorized()).andReturn();
+
 		String message = result.getResponse().getErrorMessage();
 		assertThat(message).isEqualTo("You are not allowed to get someone else's info");
 	}
@@ -683,8 +683,11 @@ public class RestAuthenticatedControllerTest {
 		String requestURI = END_POINT_PATH + "/publishquiz/";
 
 		String requestURINotFound = requestURI + Long.valueOf(100);
-		mockMvc.perform(post(requestURINotFound).header("Authorization", jwtToken)).andExpect(status().isBadRequest())
-				.andExpect(content().string("The quiz was not found for provided ID"));
+		MvcResult result = mockMvc.perform(post(requestURINotFound).header("Authorization", jwtToken))
+				.andExpect(status().isBadRequest()).andReturn();
+		
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("There's no quiz with this id");
 	}
 
 	@Test
@@ -698,9 +701,11 @@ public class RestAuthenticatedControllerTest {
 		Long quiz1OfUser2Id = quiz1OfUser2.getQuizId();
 
 		String requestURIOtherUserQuiz = requestURI + quiz1OfUser2Id;
-		mockMvc.perform(post(requestURIOtherUserQuiz).header("Authorization", jwtToken))
-				.andExpect(status().isUnauthorized())
-				.andExpect(content().string("You can't change someone else's quiz"));
+		MvcResult result = mockMvc.perform(post(requestURIOtherUserQuiz).header("Authorization", jwtToken))
+				.andExpect(status().isUnauthorized()).andReturn();
+
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("You are not allowed to get someone else's info");
 	}
 
 	@Test
