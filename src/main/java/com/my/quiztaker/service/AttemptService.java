@@ -1,7 +1,6 @@
 package com.my.quiztaker.service;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -11,36 +10,19 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.my.quiztaker.MyUser;
 import com.my.quiztaker.forms.AttemptAnswer;
 import com.my.quiztaker.forms.AttemptForm;
 import com.my.quiztaker.model.Answer;
-import com.my.quiztaker.model.AnswerRepository;
 import com.my.quiztaker.model.Attempt;
 import com.my.quiztaker.model.AttemptRepository;
 import com.my.quiztaker.model.Question;
-import com.my.quiztaker.model.QuestionRepository;
 import com.my.quiztaker.model.Quiz;
-import com.my.quiztaker.model.QuizRepository;
 import com.my.quiztaker.model.User;
-import com.my.quiztaker.model.UserRepository;
 
 @Service
 public class AttemptService {
 	@Autowired
 	private AttemptRepository attemptRepository;
-
-	@Autowired
-	private UserRepository userRepository;
-
-	@Autowired
-	private QuizRepository quizRepository;
-
-	@Autowired
-	private QuestionRepository questionRepository;
-
-	@Autowired
-	private AnswerRepository answerRepository;
 
 	@Autowired
 	private CommonService commonService;
@@ -90,7 +72,7 @@ public class AttemptService {
 		int score = 0;
 		Question question;
 		Answer answer;
-		
+
 		for (AttemptAnswer attemptAnswer : attemptAnswers) {
 			question = commonService.findQuestionById(attemptAnswer.getQuestionId());
 
@@ -104,16 +86,16 @@ public class AttemptService {
 
 		return score;
 	}
-	
+
 	private void validateAttemptAnswer(Question question, Answer answer, Long quizId) {
 		if (!answer.getQuestion().equals(question)) {
-	        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-	            "One or more answers don't match corresponding question");
-	    }
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"One or more answers don't match corresponding question");
+		}
 
-	    if (question.getQuiz().getQuizId() != quizId) {
-	        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-	            "Some of questions are not in the corresponding quiz");
-	    }
+		if (question.getQuiz().getQuizId() != quizId) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Some of questions are not in the corresponding quiz");
+		}
 	}
 }

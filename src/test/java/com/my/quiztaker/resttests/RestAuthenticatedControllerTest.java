@@ -1,7 +1,6 @@
 package com.my.quiztaker.resttests;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -20,7 +19,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -35,7 +33,6 @@ import com.my.quiztaker.forms.AccountCredentials;
 import com.my.quiztaker.forms.AttemptAnswer;
 import com.my.quiztaker.forms.AttemptForm;
 import com.my.quiztaker.forms.QuizUpdate;
-import com.my.quiztaker.forms.SignupCredentials;
 import com.my.quiztaker.forms.UserPublic;
 import com.my.quiztaker.model.Answer;
 import com.my.quiztaker.model.AnswerRepository;
@@ -1096,10 +1093,11 @@ public class RestAuthenticatedControllerTest {
 		String requestURIOtherUser = requestURI + user2Id;
 		String requestBody = "some-new-url.com";
 
-		MvcResult result = mockMvc.perform(put(requestURIOtherUser).header("Authorization", jwtToken)
-				.contentType(MediaType.APPLICATION_JSON).content(requestBody)).andExpect(status().isUnauthorized())
-				.andReturn();
-		
+		MvcResult result = mockMvc
+				.perform(put(requestURIOtherUser).header("Authorization", jwtToken)
+						.contentType(MediaType.APPLICATION_JSON).content(requestBody))
+				.andExpect(status().isUnauthorized()).andReturn();
+
 		String message = result.getResponse().getErrorMessage();
 		assertThat(message).isEqualTo("You are not allowed to get someone else's info");
 	}

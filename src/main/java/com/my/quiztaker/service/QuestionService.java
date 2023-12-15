@@ -1,6 +1,5 @@
 package com.my.quiztaker.service;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
@@ -9,7 +8,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.my.quiztaker.MyUser;
 import com.my.quiztaker.model.Answer;
@@ -17,7 +15,6 @@ import com.my.quiztaker.model.AnswerRepository;
 import com.my.quiztaker.model.Question;
 import com.my.quiztaker.model.QuestionRepository;
 import com.my.quiztaker.model.Quiz;
-import com.my.quiztaker.model.QuizRepository;
 import com.my.quiztaker.model.User;
 import com.my.quiztaker.model.UserRepository;
 
@@ -28,9 +25,6 @@ public class QuestionService {
 
 	@Autowired
 	private UserRepository userRepository;
-
-	@Autowired
-	private QuizRepository quizRepository;
 
 	@Autowired
 	private AnswerRepository answerRepository;
@@ -69,7 +63,7 @@ public class QuestionService {
 		Question question = commonService.findQuestionById(questionId);
 
 		Long idOfQuestionOwner = question.getQuiz().getUser().getId();
-		
+
 		commonService.checkAuthenticationAndRights(auth, idOfQuestionOwner);
 
 		questionRepository.deleteById(questionId);
@@ -147,6 +141,5 @@ public class QuestionService {
 		newAnswer.setCorrect(updatedAnswer.isCorrect());
 		answerRepository.save(newAnswer);
 	}
-
 
 }

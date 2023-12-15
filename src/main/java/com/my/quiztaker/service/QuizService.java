@@ -1,6 +1,5 @@
 package com.my.quiztaker.service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -13,7 +12,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.my.quiztaker.MyUser;
 import com.my.quiztaker.forms.QuizRating;
 import com.my.quiztaker.forms.QuizRatingQuestions;
 import com.my.quiztaker.forms.QuizUpdate;
@@ -29,7 +27,6 @@ import com.my.quiztaker.model.QuestionRepository;
 import com.my.quiztaker.model.Quiz;
 import com.my.quiztaker.model.QuizRepository;
 import com.my.quiztaker.model.User;
-import com.my.quiztaker.model.UserRepository;
 
 @Service
 public class QuizService {
@@ -41,9 +38,6 @@ public class QuizService {
 
 	@Autowired
 	private QuestionRepository questionRepository;
-
-	@Autowired
-	private UserRepository userRepository;
 
 	@Autowired
 	private CategoryRepository categoryRepository;
@@ -114,26 +108,26 @@ public class QuizService {
 	// Method to update quiz for authenticated user:
 	public ResponseEntity<?> updateQuizByAuth(Long quizId, QuizUpdate quizUpdated, Authentication auth) {
 		Quiz quizInDB = commonService.checkQuizById(quizId);
-		
+
 		if (quizId != quizUpdated.getQuizId())
 			return new ResponseEntity<>(
 					"The id missmatch: provided in the path id doesn't equal the id of the quiz in request body",
 					HttpStatus.BAD_REQUEST); // 400;
-		
+
 		Long userIdOfQuizInDB = quizInDB.getUser().getId();
-		
+
 		commonService.checkAuthenticationAndRights(auth, userIdOfQuizInDB);
 
 		this.updateQuiz(quizInDB, quizUpdated);
 
 		return new ResponseEntity<>("Quiz info was updated successfully", HttpStatus.OK);
 	}
-	
+
 	// Method to publish the quiz by quiz id and authentication instance:
 	public ResponseEntity<?> publishQuiz(Long quizId, Authentication auth) {
 		Quiz quiz = commonService.checkQuizById(quizId);
 		Long idOfQuizOwner = quiz.getUser().getId();
-		
+
 		commonService.checkAuthenticationAndRights(auth, idOfQuizOwner);
 
 		quiz.setStatus("Published");
@@ -141,12 +135,12 @@ public class QuizService {
 
 		return new ResponseEntity<>("Quiz was published successfully", HttpStatus.OK);
 	}
-	
+
 	// Method to delete quiz by id and authentication instance:
 	public ResponseEntity<?> deleteQuizById(Long quizId, Authentication auth) {
 		Quiz quiz = commonService.checkQuizById(quizId);
 		Long idOfQuizOwner = quiz.getUser().getId();
-		
+
 		commonService.checkAuthenticationAndRights(auth, idOfQuizOwner);
 
 		quizRepository.deleteById(quizId);
@@ -260,14 +254,14 @@ public class QuizService {
 			answerRepository.save(defaultAnswer);
 		}
 	}
-	
+
 	private void updateQuiz(Quiz quizInDB, QuizUpdate quizUpdated) {
 		Long categoryId = quizUpdated.getCategory();
 		Long difficultyId = quizUpdated.getDifficulty();
-		
+
 		Category category = this.findCategoryById(categoryId);
 		Difficulty difficulty = this.findDifficultyById(difficultyId);
-		
+
 		quizInDB.setCategory(category);
 		quizInDB.setDifficulty(difficulty);
 		quizInDB.setDescription(quizUpdated.getDescription());
