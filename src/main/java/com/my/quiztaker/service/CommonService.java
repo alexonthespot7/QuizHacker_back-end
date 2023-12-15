@@ -9,6 +9,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.my.quiztaker.MyUser;
+import com.my.quiztaker.model.Answer;
+import com.my.quiztaker.model.AnswerRepository;
+import com.my.quiztaker.model.Question;
+import com.my.quiztaker.model.QuestionRepository;
 import com.my.quiztaker.model.Quiz;
 import com.my.quiztaker.model.QuizRepository;
 import com.my.quiztaker.model.User;
@@ -21,6 +25,12 @@ public class CommonService {
 
 	@Autowired
 	private QuizRepository quizRepository;
+	
+	@Autowired
+	private QuestionRepository questionRepository;
+	
+	@Autowired
+	private AnswerRepository answerRepository;
 
 	// Method to check user's authentication and rights to read information. If user
 	// is authenticated and authorized then the user instance is returned
@@ -63,5 +73,30 @@ public class CommonService {
 		user.setAccountVerified(true);
 		user.setVerificationCode(null);
 		userRepository.save(user);
+	}
+	
+	// Method to check if the question's in db by ID:
+	public Question findQuestionById(Long questionId) {
+		Optional<Question> optionalQuestion = questionRepository.findById(questionId);
+
+		if (!optionalQuestion.isPresent())
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"One or more of your questions that supposed to be in db can't be found in db");
+
+		Question question = optionalQuestion.get();
+
+		return question;
+	}
+	
+	// Method to check if the answer is in DB by ID:
+	public Answer findAnswerById(Long answerId) {
+		Optional<Answer> optionalAnswer = answerRepository.findById(answerId);
+		if (!optionalAnswer.isPresent())
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"One or more of your answers that supposed to be in can't be found in db");
+
+		Answer answer = optionalAnswer.get();
+
+		return answer;
 	}
 }

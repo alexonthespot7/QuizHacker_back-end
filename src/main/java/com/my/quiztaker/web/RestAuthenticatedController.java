@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,6 +46,7 @@ import com.my.quiztaker.model.Quiz;
 import com.my.quiztaker.model.QuizRepository;
 import com.my.quiztaker.model.User;
 import com.my.quiztaker.model.UserRepository;
+import com.my.quiztaker.service.AttemptService;
 import com.my.quiztaker.service.AuthenticationService;
 import com.my.quiztaker.service.QuestionService;
 import com.my.quiztaker.service.QuizService;
@@ -81,6 +83,9 @@ public class RestAuthenticatedController {
 	
 	@Autowired
 	private QuizService quizService;
+	
+	@Autowired
+	private AttemptService attemptService;
 
 	@Autowired
 	private AuthenticationService jwtService;
@@ -158,7 +163,7 @@ public class RestAuthenticatedController {
 		
 	}
 
-	@RequestMapping(value = "/deletequestion/{questionid}", method = RequestMethod.DELETE)
+	@DeleteMapping("/deletequestion/{questionid}")
 	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<?> deleteQuestionById(@PathVariable("questionid") Long questionId, Authentication auth) {
 		
@@ -166,7 +171,7 @@ public class RestAuthenticatedController {
 		
 	}
 
-	@RequestMapping(value = "/publishquiz/{quizid}", method = RequestMethod.POST)
+	@PutMapping("/publishquiz/{quizid}")
 	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<?> publishQuiz(@PathVariable("quizid") Long quizId, Authentication auth) {
 		
@@ -174,74 +179,13 @@ public class RestAuthenticatedController {
 		
 	}
 
-	@RequestMapping(value = "/sendattempt/{quizid}", method = RequestMethod.POST)
+	@PostMapping("/sendattempt/{quizid}")
 	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<?> sendAttempt(@RequestBody AttemptForm attemptForm, @PathVariable("quizid") Long quizId,
 			Authentication auth) {
-		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
-			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED);
-
-		MyUser myUser = (MyUser) auth.getPrincipal();
-		Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
-		Optional<Quiz> optQuiz = quizRepository.findById(quizId);
-
-		if (!optUser.isPresent())
-			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED);
-
-		User user = optUser.get();
-
-		if (!optQuiz.isPresent())
-			return new ResponseEntity<>("Quiz was not found for provided ID", HttpStatus.BAD_REQUEST);
-
-		Quiz quiz = optQuiz.get();
-
-		if (quiz.getUser().getId() == user.getId())
-			return new ResponseEntity<>("It's impossible to send attempt for your own quiz", HttpStatus.CONFLICT); // 409
-
-		List<AttemptAnswer> attemptAnswers = attemptForm.getAttemptAnswers();
-		List<Question> questionsOfQuiz = quiz.getQuestions();
-
-		if (questionsOfQuiz.size() != attemptAnswers.size())
-			return new ResponseEntity<>(
-					"The amount of answers in the request body doesn't match the amount of questions in the quiz",
-					HttpStatus.BAD_REQUEST);
-
-		int score = 0;
-		Optional<Question> optionalQuestion;
-		Optional<Answer> optionalAnswer;
-		Question question;
-		Answer answer;
-		for (AttemptAnswer attemptAnswer : attemptAnswers) {
-			optionalQuestion = questionRepository.findById(attemptAnswer.getQuestionId());
-			if (!optionalQuestion.isPresent())
-				return new ResponseEntity<>("Question not found", HttpStatus.BAD_REQUEST);
-
-			question = optionalQuestion.get();
-			optionalAnswer = answerRepository.findById(attemptAnswer.getAnswerId());
-
-			if (!optionalAnswer.isPresent())
-				return new ResponseEntity<>("Answer not found", HttpStatus.BAD_REQUEST);
-
-			answer = optionalAnswer.get();
-
-			if (!answer.getQuestion().equals(question))
-				return new ResponseEntity<>("One or more answers don't match corresponding question",
-						HttpStatus.BAD_REQUEST);
-
-			if (question.getQuiz().getQuizId() != quizId)
-				return new ResponseEntity<>("Some of questions are not in the corresponding quiz",
-						HttpStatus.BAD_REQUEST);
-
-			if (answer.isCorrect())
-				score += 1;
-		}
-
-		Attempt attempt = new Attempt(score, quiz, user, attemptForm.getRating());
-
-		attemptRepository.save(attempt);
-
-		return ResponseEntity.ok().header(HttpHeaders.HOST, Integer.toString(score))
-				.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
+		
+		return attemptService.sendAttempt(attemptForm, quizId, auth);
+		
 	}
 
 	@RequestMapping(value = "/deletequiz/{quizid}", method = RequestMethod.DELETE)

@@ -683,9 +683,9 @@ public class RestAuthenticatedControllerTest {
 		String requestURI = END_POINT_PATH + "/publishquiz/";
 
 		String requestURINotFound = requestURI + Long.valueOf(100);
-		MvcResult result = mockMvc.perform(post(requestURINotFound).header("Authorization", jwtToken))
+		MvcResult result = mockMvc.perform(put(requestURINotFound).header("Authorization", jwtToken))
 				.andExpect(status().isBadRequest()).andReturn();
-		
+
 		String message = result.getResponse().getErrorMessage();
 		assertThat(message).isEqualTo("There's no quiz with this id");
 	}
@@ -701,7 +701,7 @@ public class RestAuthenticatedControllerTest {
 		Long quiz1OfUser2Id = quiz1OfUser2.getQuizId();
 
 		String requestURIOtherUserQuiz = requestURI + quiz1OfUser2Id;
-		MvcResult result = mockMvc.perform(post(requestURIOtherUserQuiz).header("Authorization", jwtToken))
+		MvcResult result = mockMvc.perform(put(requestURIOtherUserQuiz).header("Authorization", jwtToken))
 				.andExpect(status().isUnauthorized()).andReturn();
 
 		String message = result.getResponse().getErrorMessage();
@@ -728,7 +728,7 @@ public class RestAuthenticatedControllerTest {
 		Long createdQuizOfUser1Id = createdQuizOfUser1.getQuizId();
 
 		String requestURINotFound = requestURI + createdQuizOfUser1Id;
-		mockMvc.perform(post(requestURINotFound).header("Authorization", jwtToken)).andExpect(status().isOk());
+		mockMvc.perform(put(requestURINotFound).header("Authorization", jwtToken)).andExpect(status().isOk());
 
 		Optional<Quiz> optionalPublishedQuiz = quizRepository.findById(createdQuizOfUser1Id);
 		assertThat(optionalPublishedQuiz).isPresent();
@@ -745,9 +745,13 @@ public class RestAuthenticatedControllerTest {
 		AttemptForm attemptFormQuizNotFound = new AttemptForm();
 		String requestBodyQuizNotFound = objectMapper.writeValueAsString(attemptFormQuizNotFound);
 		String requestURINotFound = requestURI + Long.valueOf(100);
-		mockMvc.perform(post(requestURINotFound).header("Authorization", jwtToken)
-				.contentType(MediaType.APPLICATION_JSON).content(requestBodyQuizNotFound))
-				.andExpect(status().isBadRequest()).andExpect(content().string("Quiz was not found for provided ID"));
+		MvcResult result = mockMvc
+				.perform(post(requestURINotFound).header("Authorization", jwtToken)
+						.contentType(MediaType.APPLICATION_JSON).content(requestBodyQuizNotFound))
+				.andExpect(status().isBadRequest()).andReturn();
+
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("There's no quiz with this id");
 	}
 
 	@Test
@@ -784,10 +788,14 @@ public class RestAuthenticatedControllerTest {
 
 		String requestBodyAnswersSizeMissmatch = objectMapper.writeValueAsString(attemptFormAnswersSizeMissmatch);
 		String requestURIAnswersSizeMissmatch = requestURI + quiz1User2Id;
-		mockMvc.perform(post(requestURIAnswersSizeMissmatch).header("Authorization", jwtToken)
-				.contentType(MediaType.APPLICATION_JSON).content(requestBodyAnswersSizeMissmatch))
-				.andExpect(status().isBadRequest()).andExpect(content().string(
-						"The amount of answers in the request body doesn't match the amount of questions in the quiz"));
+		MvcResult result = mockMvc
+				.perform(post(requestURIAnswersSizeMissmatch).header("Authorization", jwtToken)
+						.contentType(MediaType.APPLICATION_JSON).content(requestBodyAnswersSizeMissmatch))
+				.andExpect(status().isBadRequest()).andReturn();
+
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo(
+				"The amount of answers in the request body doesn't match the amount of questions in the quiz");
 	}
 
 	@Test
@@ -809,9 +817,13 @@ public class RestAuthenticatedControllerTest {
 
 		String requestBodyQuestionNotFound = objectMapper.writeValueAsString(attemptFormQuestionNotFound);
 		String requestURIQuestionNotFound = requestURI + quiz1User2Id;
-		mockMvc.perform(post(requestURIQuestionNotFound).header("Authorization", jwtToken)
-				.contentType(MediaType.APPLICATION_JSON).content(requestBodyQuestionNotFound))
-				.andExpect(status().isBadRequest()).andExpect(content().string("Question not found"));
+		MvcResult result = mockMvc
+				.perform(post(requestURIQuestionNotFound).header("Authorization", jwtToken)
+						.contentType(MediaType.APPLICATION_JSON).content(requestBodyQuestionNotFound))
+				.andExpect(status().isBadRequest()).andReturn();
+
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("One or more of your questions that supposed to be in db can't be found in db");
 	}
 
 	@Test
@@ -833,9 +845,13 @@ public class RestAuthenticatedControllerTest {
 
 		String requestBodyAnswerNotFound = objectMapper.writeValueAsString(attemptFormAnswerNotFound);
 		String requestURIAnswerNotFound = requestURI + quiz1User2Id;
-		mockMvc.perform(post(requestURIAnswerNotFound).header("Authorization", jwtToken)
-				.contentType(MediaType.APPLICATION_JSON).content(requestBodyAnswerNotFound))
-				.andExpect(status().isBadRequest()).andExpect(content().string("Answer not found"));
+		MvcResult result = mockMvc
+				.perform(post(requestURIAnswerNotFound).header("Authorization", jwtToken)
+						.contentType(MediaType.APPLICATION_JSON).content(requestBodyAnswerNotFound))
+				.andExpect(status().isBadRequest()).andReturn();
+
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("One or more of your answers that supposed to be in can't be found in db");
 	}
 
 	@Test
@@ -860,10 +876,13 @@ public class RestAuthenticatedControllerTest {
 		String requestBodyAnswersQuestionDontMatch = objectMapper
 				.writeValueAsString(attemptFormAnswersQuestionDontMatch);
 		String requestURIAnswersQuestionDontMatch = requestURI + quiz1User2Id;
-		mockMvc.perform(post(requestURIAnswersQuestionDontMatch).header("Authorization", jwtToken)
-				.contentType(MediaType.APPLICATION_JSON).content(requestBodyAnswersQuestionDontMatch))
-				.andExpect(status().isBadRequest())
-				.andExpect(content().string("One or more answers don't match corresponding question"));
+		MvcResult result = mockMvc
+				.perform(post(requestURIAnswersQuestionDontMatch).header("Authorization", jwtToken)
+						.contentType(MediaType.APPLICATION_JSON).content(requestBodyAnswersQuestionDontMatch))
+				.andExpect(status().isBadRequest()).andReturn();
+
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("One or more answers don't match corresponding question");
 	}
 
 	@Test
@@ -891,10 +910,13 @@ public class RestAuthenticatedControllerTest {
 
 		String requestBodyQuestionDontMatchQuiz = objectMapper.writeValueAsString(attemptFormQuestionDontMatchQuiz);
 		String requestURIQuestionDontMatchQuiz = requestURI + quiz1User2Id;
-		mockMvc.perform(post(requestURIQuestionDontMatchQuiz).header("Authorization", jwtToken)
-				.contentType(MediaType.APPLICATION_JSON).content(requestBodyQuestionDontMatchQuiz))
-				.andExpect(status().isBadRequest())
-				.andExpect(content().string("Some of questions are not in the corresponding quiz"));
+		MvcResult result = mockMvc
+				.perform(post(requestURIQuestionDontMatchQuiz).header("Authorization", jwtToken)
+						.contentType(MediaType.APPLICATION_JSON).content(requestBodyQuestionDontMatchQuiz))
+				.andExpect(status().isBadRequest()).andReturn();
+
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("Some of questions are not in the corresponding quiz");
 	}
 
 	@Test

@@ -66,7 +66,7 @@ public class QuestionService {
 
 	// Method to delete question by id and authentication instance:
 	public ResponseEntity<?> deleteQuestionById(Long questionId, Authentication auth) {
-		Question question = this.findQuestionById(questionId);
+		Question question = commonService.findQuestionById(questionId);
 
 		Long idOfQuestionOwner = question.getQuiz().getUser().getId();
 		
@@ -126,7 +126,7 @@ public class QuestionService {
 	}
 
 	private void updateExistingQuestionAndAnswers(Question updatedQuestion, Long questionId) {
-		Question newQuestion = this.findQuestionById(questionId);
+		Question newQuestion = commonService.findQuestionById(questionId);
 
 		newQuestion.setText(updatedQuestion.getText());
 		questionRepository.save(newQuestion);
@@ -139,35 +139,14 @@ public class QuestionService {
 
 	}
 
-	private Question findQuestionById(Long questionId) {
-		Optional<Question> optionalQuestion = questionRepository.findById(questionId);
-
-		if (!optionalQuestion.isPresent())
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-					"One or more of your questions that supposed to be in db can't be found in db");
-
-		Question question = optionalQuestion.get();
-
-		return question;
-	}
-
 	private void updateExistingAnswer(Answer updatedAnswer) {
 		Long answerId = updatedAnswer.getAnswerId();
-		Answer newAnswer = this.findAnswerById(answerId);
+		Answer newAnswer = commonService.findAnswerById(answerId);
 
 		newAnswer.setText(updatedAnswer.getText());
 		newAnswer.setCorrect(updatedAnswer.isCorrect());
 		answerRepository.save(newAnswer);
 	}
 
-	private Answer findAnswerById(Long answerId) {
-		Optional<Answer> optionalAnswer = answerRepository.findById(answerId);
-		if (!optionalAnswer.isPresent())
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-					"One or more of your answers that supposed to be in can't be found in db");
 
-		Answer answer = optionalAnswer.get();
-
-		return answer;
-	}
 }
