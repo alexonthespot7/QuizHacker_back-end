@@ -555,9 +555,11 @@ public class RestAuthenticatedControllerTest {
 
 		String requestBodyQuizNotFound = objectMapper.writeValueAsString(questionsQuizNotFound);
 		String requestURIQuizNotFound = requestURI + Long.valueOf(20);
-		mockMvc.perform(post(requestURIQuizNotFound).header("Authorization", jwtToken)
+		MvcResult result = mockMvc.perform(put(requestURIQuizNotFound).header("Authorization", jwtToken)
 				.contentType(MediaType.APPLICATION_JSON).content(requestBodyQuizNotFound))
-				.andExpect(status().isBadRequest()).andExpect(content().string("No quiz was found for provided ID"));
+				.andExpect(status().isBadRequest()).andReturn();
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("There's no quiz with this id");
 	}
 
 	@Test
@@ -577,10 +579,12 @@ public class RestAuthenticatedControllerTest {
 		String requestBodyTryingToChangeOtherUserQuiz = objectMapper
 				.writeValueAsString(questionsTryingToChangeOtherUserQuiz);
 		String requestURITryingToChangeOtherUserQuiz = requestURI + quizOfUser2ToUpdateId;
-		mockMvc.perform(post(requestURITryingToChangeOtherUserQuiz).header("Authorization", jwtToken)
-				.contentType(MediaType.APPLICATION_JSON).content(requestBodyTryingToChangeOtherUserQuiz))
-				.andExpect(status().isUnauthorized())
-				.andExpect(content().string("You are not allowed to change someone else's quiz"));
+		MvcResult result = mockMvc
+				.perform(put(requestURITryingToChangeOtherUserQuiz).header("Authorization", jwtToken)
+						.contentType(MediaType.APPLICATION_JSON).content(requestBodyTryingToChangeOtherUserQuiz))
+				.andExpect(status().isUnauthorized()).andReturn();
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("You are not allowed to get someone else's info");
 	}
 
 	@Test
@@ -610,7 +614,7 @@ public class RestAuthenticatedControllerTest {
 				+ "    }\r\n" + "]";
 
 		String requestURIGood = requestURI + quizOfUser1ToUpdateId;
-		mockMvc.perform(post(requestURIGood).header("Authorization", jwtToken).contentType(MediaType.APPLICATION_JSON)
+		mockMvc.perform(put(requestURIGood).header("Authorization", jwtToken).contentType(MediaType.APPLICATION_JSON)
 				.content(requestBody)).andExpect(status().isOk());
 
 		quizzesUser1 = quizRepository.findQuizzesByUserId(user1Id);

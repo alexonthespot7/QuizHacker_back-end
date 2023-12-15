@@ -149,63 +149,13 @@ public class RestAuthenticatedController {
 		
 	}
 
-	@RequestMapping(value = "/savequestions/{quizid}", method = RequestMethod.POST)
+	@PutMapping("/savequestions/{quizid}")
 	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<?> saveQuestions(@PathVariable("quizid") Long quizId, @RequestBody List<Question> questions,
 			Authentication auth) {
-		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
-			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401;
-
-		MyUser myUser = (MyUser) auth.getPrincipal();
-		Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
-
-		if (!optUser.isPresent())
-			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401;
-
-		User user = optUser.get();
-		Optional<Quiz> optionalQuizInDB = quizRepository.findById(quizId);
-
-		if (!optionalQuizInDB.isPresent())
-			return new ResponseEntity<>("No quiz was found for provided ID", HttpStatus.BAD_REQUEST); // 400;
-
-		Quiz quizInDB = optionalQuizInDB.get();
-
-		if (user.getId() != quizInDB.getUser().getId())
-			return new ResponseEntity<>("You are not allowed to change someone else's quiz", HttpStatus.UNAUTHORIZED); // 401;
-
-		Question newQuestion;
-		Answer newAnswer;
-		Iterator<Question> iterator = questions.iterator();
-
-		while (iterator.hasNext()) {
-			Question question = iterator.next();
-			// If the question wasn't in database before its id is under 0. Then question
-			// should be created and added to database from scratch. Otherwise the program
-			// changes already existing question and its answers
-			if (question.getQuestionId() < 0) {
-				newQuestion = new Question(question.getText(), question.getQuiz());
-				questionRepository.save(newQuestion);
-				for (int i = 0; i < question.getAnswers().size(); i++) {
-					newAnswer = new Answer(question.getAnswers().get(i).getText(),
-							question.getAnswers().get(i).isCorrect(), newQuestion);
-					answerRepository.save(newAnswer);
-				}
-			} else {
-				for (int i = 0; i < question.getAnswers().size(); i++) {
-					newAnswer = answerRepository.findById(question.getAnswers().get(i).getAnswerId()).get();
-
-					newAnswer.setText(question.getAnswers().get(i).getText());
-					newAnswer.setCorrect(question.getAnswers().get(i).isCorrect());
-					answerRepository.save(newAnswer);
-				}
-				newQuestion = questionRepository.findById(question.getQuestionId()).get();
-
-				newQuestion.setText(question.getText());
-				questionRepository.save(newQuestion);
-			}
-		}
-
-		return new ResponseEntity<>("Everything was saved successfully", HttpStatus.OK);
+		
+		return questionService.saveQuestions(quizId, questions, auth);
+		
 	}
 
 	@RequestMapping(value = "/deletequestion/{questionid}", method = RequestMethod.DELETE)
