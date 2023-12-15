@@ -161,29 +161,9 @@ public class RestAuthenticatedController {
 	@RequestMapping(value = "/deletequestion/{questionid}", method = RequestMethod.DELETE)
 	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<?> deleteQuestionById(@PathVariable("questionid") Long questionId, Authentication auth) {
-		Optional<Question> optQuestion = questionRepository.findById(questionId);
-		if (!optQuestion.isPresent())
-			return new ResponseEntity<>("There is no such question", HttpStatus.BAD_REQUEST); // 400
-
-		Question question = optQuestion.get();
-
-		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
-			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401
-
-		MyUser myUser = (MyUser) auth.getPrincipal();
-		Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
-
-		if (!optUser.isPresent())
-			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401;
-
-		User user = optUser.get();
-
-		if (user.getId() != question.getQuiz().getUser().getId())
-			return new ResponseEntity<>("You can't change someone else's quiz", HttpStatus.UNAUTHORIZED); // 401
-
-		questionRepository.deleteById(questionId);
-
-		return new ResponseEntity<>("Question was deleted successfully", HttpStatus.OK);
+		
+		return questionService.deleteQuestionById(questionId, auth);
+		
 	}
 
 	@RequestMapping(value = "/publishquiz/{quizid}", method = RequestMethod.POST)

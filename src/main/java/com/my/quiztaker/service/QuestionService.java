@@ -64,6 +64,19 @@ public class QuestionService {
 		return new ResponseEntity<>("Everything was saved successfully", HttpStatus.OK);
 	}
 
+	// Method to delete question by id and authentication instance:
+	public ResponseEntity<?> deleteQuestionById(Long questionId, Authentication auth) {
+		Question question = this.findQuestionById(questionId);
+
+		Long idOfQuestionOwner = question.getQuiz().getUser().getId();
+		
+		commonService.checkAuthenticationAndRights(auth, idOfQuestionOwner);
+
+		questionRepository.deleteById(questionId);
+
+		return new ResponseEntity<>("Question was deleted successfully", HttpStatus.OK);
+	}
+
 	private boolean isAuthenticatedAndQuizOwner(Long quizId, Authentication auth, Quiz quiz) {
 		if (auth == null || !(auth.getPrincipal() instanceof MyUser)) {
 			return false;
@@ -95,64 +108,66 @@ public class QuestionService {
 			}
 		}
 	}
-	
+
 	private void createNewQuestionWithAnswers(Question question) {
 		Question newQuestion = new Question(question.getText(), question.getQuiz());
 		questionRepository.save(newQuestion);
 
 		List<Answer> answers = question.getAnswers();
-		
+
 		for (Answer answer : answers) {
 			this.createNewAnswer(answer, newQuestion);
 		}
 	}
-	
+
 	private void createNewAnswer(Answer answer, Question question) {
 		Answer newAnswer = new Answer(answer.getText(), answer.isCorrect(), question);
 		answerRepository.save(newAnswer);
 	}
-	
+
 	private void updateExistingQuestionAndAnswers(Question updatedQuestion, Long questionId) {
 		Question newQuestion = this.findQuestionById(questionId);
-		
+
 		newQuestion.setText(updatedQuestion.getText());
 		questionRepository.save(newQuestion);
-		
+
 		List<Answer> answers = updatedQuestion.getAnswers();
-		
+
 		for (Answer answer : answers) {
 			this.updateExistingAnswer(answer);
 		}
-		
+
 	}
-	
+
 	private Question findQuestionById(Long questionId) {
 		Optional<Question> optionalQuestion = questionRepository.findById(questionId);
 
 		if (!optionalQuestion.isPresent())
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more of your questions that supposed to be in db can't be found in db");
-		
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"One or more of your questions that supposed to be in db can't be found in db");
+
 		Question question = optionalQuestion.get();
-		
+
 		return question;
 	}
-	
+
 	private void updateExistingAnswer(Answer updatedAnswer) {
 		Long answerId = updatedAnswer.getAnswerId();
 		Answer newAnswer = this.findAnswerById(answerId);
-		
+
 		newAnswer.setText(updatedAnswer.getText());
 		newAnswer.setCorrect(updatedAnswer.isCorrect());
 		answerRepository.save(newAnswer);
 	}
-	
+
 	private Answer findAnswerById(Long answerId) {
 		Optional<Answer> optionalAnswer = answerRepository.findById(answerId);
 		if (!optionalAnswer.isPresent())
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more of your answers that supposed to be in can't be found in db");
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"One or more of your answers that supposed to be in can't be found in db");
 
 		Answer answer = optionalAnswer.get();
-		
+
 		return answer;
 	}
 }
