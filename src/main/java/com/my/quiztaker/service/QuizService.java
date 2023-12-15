@@ -16,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.my.quiztaker.MyUser;
 import com.my.quiztaker.forms.QuizRating;
 import com.my.quiztaker.forms.QuizRatingQuestions;
+import com.my.quiztaker.forms.QuizUpdate;
 import com.my.quiztaker.model.Answer;
 import com.my.quiztaker.model.AnswerRepository;
 import com.my.quiztaker.model.AttemptRepository;
@@ -104,11 +105,31 @@ public class QuizService {
 	// Method to create new default quiz by current authentication instance:
 	public ResponseEntity<?> createQuizByAuth(Authentication auth) {
 		User user = commonService.checkAuthentication(auth);
-		Category otherCategory = this.findCategory("Other");
-		Difficulty easyDifficulty = this.findDifficulty("Easy");
+		Category otherCategory = this.findCategoryByName("Other");
+		Difficulty easyDifficulty = this.findDifficultyByName("Easy");
 
 		return this.createDefaultQuiz(user, otherCategory, easyDifficulty);
 	}
+
+	// Method to update quiz for authenticated user:
+	public ResponseEntity<?> updateQuizByAuth(Long quizId, QuizUpdate quizUpdated, Authentication auth) {
+		Quiz quizInDB = commonService.checkQuizById(quizId);
+		
+		if (quizId != quizUpdated.getQuizId())
+			return new ResponseEntity<>(
+					"The id missmatch: provided in the path id doesn't equal the id of the quiz in request body",
+					HttpStatus.BAD_REQUEST); // 400;
+		
+		Long userIdOfQuizInDB = quizInDB.getUser().getId();
+		
+		commonService.checkAuthenticationAndRights(auth, userIdOfQuizInDB);
+
+		this.updateQuiz(quizInDB, quizUpdated);
+
+		return new ResponseEntity<>("Quiz info was updated successfully", HttpStatus.OK);
+	}
+	
+	
 
 	private List<QuizRatingQuestions> makeQuizRatingQuestionsListFromQuizzes(List<Quiz> quizzes) {
 		return quizzes.stream().map(this::makeQuizRatingQuestionsFromQuiz).collect(Collectors.toList());
@@ -141,7 +162,7 @@ public class QuizService {
 				.collect(Collectors.toList());
 	}
 
-	private Category findCategory(String categoryName) {
+	private Category findCategoryByName(String categoryName) {
 		Optional<Category> optionalCategory = categoryRepository.findByName(categoryName);
 
 		if (!optionalCategory.isPresent())
@@ -152,11 +173,33 @@ public class QuizService {
 		return category;
 	}
 
-	private Difficulty findDifficulty(String difficultyName) {
+	private Category findCategoryById(Long categoryId) {
+		Optional<Category> optionalCategory = categoryRepository.findById(categoryId);
+
+		if (!optionalCategory.isPresent())
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category can't be found by ID");
+
+		Category category = optionalCategory.get();
+
+		return category;
+	}
+
+	private Difficulty findDifficultyByName(String difficultyName) {
 		Optional<Difficulty> optionalDifficulty = difficultyRepository.findByName(difficultyName);
 
 		if (!optionalDifficulty.isPresent())
 			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Difficulty can't be found by name");
+
+		Difficulty difficulty = optionalDifficulty.get();
+
+		return difficulty;
+	}
+
+	private Difficulty findDifficultyById(Long difficultyId) {
+		Optional<Difficulty> optionalDifficulty = difficultyRepository.findById(difficultyId);
+
+		if (!optionalDifficulty.isPresent())
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Difficulty can't be found by ID");
 
 		Difficulty difficulty = optionalDifficulty.get();
 
@@ -193,5 +236,20 @@ public class QuizService {
 			defaultAnswer = new Answer(question, isCorrect);
 			answerRepository.save(defaultAnswer);
 		}
+	}
+	
+	private void updateQuiz(Quiz quizInDB, QuizUpdate quizUpdated) {
+		Long categoryId = quizUpdated.getCategory();
+		Long difficultyId = quizUpdated.getDifficulty();
+		
+		Category category = this.findCategoryById(categoryId);
+		Difficulty difficulty = this.findDifficultyById(difficultyId);
+		
+		quizInDB.setCategory(category);
+		quizInDB.setDifficulty(difficulty);
+		quizInDB.setDescription(quizUpdated.getDescription());
+		quizInDB.setMinutes(quizUpdated.getMinutes());
+		quizInDB.setTitle(quizUpdated.getTitle());
+		quizRepository.save(quizInDB);
 	}
 }

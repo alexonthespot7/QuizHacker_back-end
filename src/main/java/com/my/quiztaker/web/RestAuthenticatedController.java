@@ -15,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -139,59 +140,13 @@ public class RestAuthenticatedController {
 		
 	}
 
-	@RequestMapping(value = "/updatequiz/{quizid}", method = RequestMethod.POST)
+	@PutMapping("/updatequiz/{quizid}")
 	@PreAuthorize("isAuthenticated()")
-	public ResponseEntity<?> updateQuizByAuth(@PathVariable("quizid") Long quizId, @RequestBody QuizUpdate quiz,
+	public ResponseEntity<?> updateQuizByAuth(@PathVariable("quizid") Long quizId, @RequestBody QuizUpdate quizUpdated,
 			Authentication auth) {
-		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
-			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401
-
-		MyUser myUser = (MyUser) auth.getPrincipal();
-		Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
-
-		User user = optUser.get();
-
-		if (!optUser.isPresent())
-			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED);
-
-		Optional<Quiz> optionalQuizInDB = quizRepository.findById(quizId);
-
-		if (!optionalQuizInDB.isPresent())
-			return new ResponseEntity<>("There is no such quiz", HttpStatus.BAD_REQUEST); // 400;
-
-		if (quizId != quiz.getQuizId())
-			return new ResponseEntity<>(
-					"The id missmatch: provided in the path id doesn't equal the id of the quiz in request body",
-					HttpStatus.BAD_REQUEST); // 400;
-
-		Long userId = user.getId();
-		Quiz currentQuiz = optionalQuizInDB.get();
-		Long userIdOfQuizInDB = currentQuiz.getUser().getId();
-
-		if (userId != userIdOfQuizInDB)
-			return new ResponseEntity<>("You are not allowed to change someone else's quiz", HttpStatus.UNAUTHORIZED); // 401;
-
-		Optional<Category> optionalCategory = categoryRepository.findById(quiz.getCategory());
-
-		if (!optionalCategory.isPresent())
-			return new ResponseEntity<>("The category wasn't find by provided ID", HttpStatus.BAD_REQUEST); // 400;
-
-		Optional<Difficulty> optionalDifficulty = difficultyRepository.findById(quiz.getDifficulty());
-
-		if (!optionalDifficulty.isPresent())
-			return new ResponseEntity<>("The difficulty wasn't find by provided ID", HttpStatus.BAD_REQUEST); // 400;
-
-		Category category = optionalCategory.get();
-		Difficulty difficulty = optionalDifficulty.get();
-
-		currentQuiz.setCategory(category);
-		currentQuiz.setDifficulty(difficulty);
-		currentQuiz.setDescription(quiz.getDescription());
-		currentQuiz.setMinutes(quiz.getMinutes());
-		currentQuiz.setTitle(quiz.getTitle());
-		quizRepository.save(currentQuiz);
-
-		return new ResponseEntity<>("Quiz info was updated successfully", HttpStatus.OK);
+		
+		return quizService.updateQuizByAuth(quizId, quizUpdated, auth);
+		
 	}
 
 	@RequestMapping(value = "/savequestions/{quizid}", method = RequestMethod.POST)

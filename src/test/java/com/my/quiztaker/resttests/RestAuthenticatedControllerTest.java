@@ -392,9 +392,13 @@ public class RestAuthenticatedControllerTest {
 
 		String requestBodyQuizIsNotInDB = objectMapper.writeValueAsString(quizUpdateQuizNotInDB);
 		String requestURIQuizNotInDB = requestURI + Long.valueOf(20);
-		mockMvc.perform(post(requestURIQuizNotInDB).header("Authorization", jwtToken)
-				.contentType(MediaType.APPLICATION_JSON).content(requestBodyQuizIsNotInDB))
-				.andExpect(status().isBadRequest()).andExpect(content().string("There is no such quiz"));
+		MvcResult result = mockMvc
+				.perform(put(requestURIQuizNotInDB).header("Authorization", jwtToken)
+						.contentType(MediaType.APPLICATION_JSON).content(requestBodyQuizIsNotInDB))
+				.andExpect(status().isBadRequest()).andReturn();
+
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("There's no quiz with this id");
 	}
 
 	@Test
@@ -414,7 +418,7 @@ public class RestAuthenticatedControllerTest {
 
 		String requestBodyIdMissmatch = objectMapper.writeValueAsString(quizUpdateIdMissmatch);
 		String requestURIIdMissmatch = requestURI + wrongQuizId;
-		mockMvc.perform(post(requestURIIdMissmatch).header("Authorization", jwtToken)
+		mockMvc.perform(put(requestURIIdMissmatch).header("Authorization", jwtToken)
 				.contentType(MediaType.APPLICATION_JSON).content(requestBodyIdMissmatch))
 				.andExpect(status().isBadRequest()).andExpect(content().string(
 						"The id missmatch: provided in the path id doesn't equal the id of the quiz in request body"));
@@ -436,10 +440,13 @@ public class RestAuthenticatedControllerTest {
 
 		String requestBodyOtherUserQuiz = objectMapper.writeValueAsString(quizUpdateOtherUserQuiz);
 		String requestURIOtherUserQuiz = requestURI + quizOfUser2ToUpdateId;
-		mockMvc.perform(post(requestURIOtherUserQuiz).header("Authorization", jwtToken)
-				.contentType(MediaType.APPLICATION_JSON).content(requestBodyOtherUserQuiz))
-				.andExpect(status().isUnauthorized())
-				.andExpect(content().string("You are not allowed to change someone else's quiz"));
+		MvcResult result = mockMvc
+				.perform(put(requestURIOtherUserQuiz).header("Authorization", jwtToken)
+						.contentType(MediaType.APPLICATION_JSON).content(requestBodyOtherUserQuiz))
+				.andExpect(status().isUnauthorized()).andReturn();
+
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("You are not allowed to get someone else's info");
 	}
 
 	@Test
@@ -459,10 +466,13 @@ public class RestAuthenticatedControllerTest {
 
 		String requestBodyCategoryNotFound = objectMapper.writeValueAsString(quizUpdateCategoryNotFound);
 		String requestURICategoryNotFound = requestURI + quizToUpdateId;
-		mockMvc.perform(post(requestURICategoryNotFound).header("Authorization", jwtToken)
-				.contentType(MediaType.APPLICATION_JSON).content(requestBodyCategoryNotFound))
-				.andExpect(status().isBadRequest())
-				.andExpect(content().string("The category wasn't find by provided ID"));
+		MvcResult result = mockMvc
+				.perform(put(requestURICategoryNotFound).header("Authorization", jwtToken)
+						.contentType(MediaType.APPLICATION_JSON).content(requestBodyCategoryNotFound))
+				.andExpect(status().isBadRequest()).andReturn();
+
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("Category can't be found by ID");
 	}
 
 	@Test
@@ -482,10 +492,13 @@ public class RestAuthenticatedControllerTest {
 
 		String requestBodyDifficultyNotFound = objectMapper.writeValueAsString(quizUpdateDifficultyNotFound);
 		String requestURIDifficultyNotFound = requestURI + quizToUpdateId;
-		mockMvc.perform(post(requestURIDifficultyNotFound).header("Authorization", jwtToken)
-				.contentType(MediaType.APPLICATION_JSON).content(requestBodyDifficultyNotFound))
-				.andExpect(status().isBadRequest())
-				.andExpect(content().string("The difficulty wasn't find by provided ID"));
+		MvcResult result = mockMvc
+				.perform(put(requestURIDifficultyNotFound).header("Authorization", jwtToken)
+						.contentType(MediaType.APPLICATION_JSON).content(requestBodyDifficultyNotFound))
+				.andExpect(status().isBadRequest()).andReturn();
+
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("Difficulty can't be found by ID");
 	}
 
 	@Test
@@ -517,7 +530,7 @@ public class RestAuthenticatedControllerTest {
 
 		String requestBody = objectMapper.writeValueAsString(quizUpdateInstance);
 		String requestURIGood = requestURI + quizToUpdateId;
-		mockMvc.perform(post(requestURIGood).header("Authorization", jwtToken).contentType(MediaType.APPLICATION_JSON)
+		mockMvc.perform(put(requestURIGood).header("Authorization", jwtToken).contentType(MediaType.APPLICATION_JSON)
 				.content(requestBody)).andExpect(status().isOk());
 
 		Optional<Quiz> optionalUpdatedQuiz = quizRepository.findById(quizToUpdateId);
