@@ -2,11 +2,11 @@ package com.my.quiztaker.forms;
 
 import java.util.List;
 
-public class LeaderboardAuthorized {
+public class Leaderboard {
 	private List<UserPublic> users;
 	private Integer position;
 	
-	public LeaderboardAuthorized(List<UserPublic> users, Integer position) {
+	public Leaderboard(List<UserPublic> users, Integer position) {
 		this.users = users;
 		this.position = position;
 	}

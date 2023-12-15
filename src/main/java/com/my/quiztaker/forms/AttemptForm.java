@@ -3,12 +3,20 @@ package com.my.quiztaker.forms;
 import java.util.List;
 
 public class AttemptForm {
-	private List<AttemptAnswers> attemptAnswers;
+	private List<AttemptAnswer> attemptAnswers;
 	private Integer rating;
-	public List<AttemptAnswers> getAttemptAnswers() {
+	
+	public AttemptForm() {}
+	
+	public AttemptForm(List<AttemptAnswer> attemptAnswers, Integer rating) {
+		this.attemptAnswers = attemptAnswers;
+		this.rating = rating;
+	}
+
+	public List<AttemptAnswer> getAttemptAnswers() {
 		return attemptAnswers;
 	}
-	public void setAttemptAnswers(List<AttemptAnswers> attemptAnswers) {
+	public void setAttemptAnswers(List<AttemptAnswer> attemptAnswers) {
 		this.attemptAnswers = attemptAnswers;
 	}
 	public Integer getRating() {

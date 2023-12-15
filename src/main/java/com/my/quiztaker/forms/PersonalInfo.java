@@ -3,17 +3,18 @@ package com.my.quiztaker.forms;
 public class PersonalInfo {
 	private String username;
 	private String email;
-	private Double score;
+	private Integer score;
 	private Integer attempts;
 	private Integer position;
 	
-	public PersonalInfo(String username, String email, Double score, Integer attempts, Integer position) {
+	public PersonalInfo(String username, String email, Integer score, Integer attempts, Integer position) {
 		this.username = username;
 		this.email = email;
 		this.score = score;
 		this.attempts = attempts;
 		this.position = position;
 	}
+	
 	public String getUsername() {
 		return username;
 	}
@@ -34,11 +35,11 @@ public class PersonalInfo {
 	}
 
 
-	public Double getScore() {
+	public Integer getScore() {
 		return score;
 	}
 
-	public void setScore(Double score) {
+	public void setScore(Integer score) {
 		this.score = score;
 	}
 
