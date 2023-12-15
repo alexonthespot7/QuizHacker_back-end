@@ -42,6 +42,9 @@ public class UserService {
 	private AttemptRepository attemptRepository;
 
 	@Autowired
+	private CommonService commonService;
+
+	@Autowired
 	private MailService mailService;
 
 	@Autowired
@@ -111,7 +114,7 @@ public class UserService {
 		if (!user.getVerificationCode().equals(token))
 			return new ResponseEntity<>("Verification code is incorrect", HttpStatus.CONFLICT); // 409
 
-		mailService.verifyUser(user);
+		commonService.verifyUser(user);
 
 		return new ResponseEntity<>("Verification went well", HttpStatus.OK);
 	}
@@ -131,46 +134,28 @@ public class UserService {
 
 	// Method to get personal info of authenticated user:
 	public PersonalInfo getPersonalInfo(Long userId, Authentication auth) {
-		User user = this.checkAuthentication(auth);
-
-		if (user.getId() != userId)
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-					"You are not allowed to get someone else's info");
+		User user = commonService.checkAuthentication(auth, userId);
 
 		return this.createPersonalInfoInstance(user, userId);
 	}
 
 	// Method to get leaderboard for authenticated user:
 	public Leaderboard getLeaderboardAuth(Long userId, Authentication auth) {
-		User user = this.checkAuthentication(auth);
-
-		if (user.getId() != userId)
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-					"You are not allowed to get someone else's info");
+		User user = commonService.checkAuthentication(auth, userId);
 
 		return this.createLeaderboardInstanceAuth(user, userId);
 	}
 
 	private List<UserPublic> getTop10(List<UserPublic> leaders) {
-		if (leaders.size() > LIMIT) {
-			leaders = leaders.subList(0, LIMIT);
-		}
-
+		leaders = leaders.subList(0, Math.min(leaders.size(), LIMIT));
+		
 		return leaders;
 	}
 
 	private User findUserByUsernameOrEmail(String usernameOrEmail) {
-		Optional<User> optionalUser = userRepository.findByEmail(usernameOrEmail);
-
-		if (!optionalUser.isPresent()) {
-			optionalUser = userRepository.findByUsername(usernameOrEmail);
-			if (!optionalUser.isPresent())
-				throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-						"User wasn't found for provided username or email");
-		}
-
-		User user = optionalUser.get();
-
+		User user = userRepository.findByEmail(usernameOrEmail).or(() -> userRepository.findByUsername(usernameOrEmail))
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+						"User wasn't found for provided username or email"));
 		return user;
 	}
 
@@ -275,22 +260,6 @@ public class UserService {
 		return password;
 	}
 
-	private User checkAuthentication(Authentication auth) {
-		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
-
-		MyUser myUser = (MyUser) auth.getPrincipal();
-		Optional<User> optionalUser = userRepository.findByUsername(myUser.getUsername());
-
-		if (!optionalUser.isPresent()) {
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
-		}
-
-		User user = optionalUser.get();
-
-		return user;
-	}
-
 	private PersonalInfo createPersonalInfoInstance(User user, Long userId) {
 		UserPublic userPublic = userRepository.findRatingByUserId(userId);
 
@@ -338,19 +307,10 @@ public class UserService {
 	}
 
 	private int findPosition(String username, List<UserPublic> leaders) {
-		int position = -1;
-		UserPublic userPublic;
-		String usernameOfCurrentUser;
+		int index = leaders.indexOf(leaders.stream().filter(userPublic -> userPublic.getUsername().equals(username))
+				.findFirst().orElse(null));
 
-		for (int i = 0; i < leaders.size(); i++) {
-			userPublic = leaders.get(i);
-			usernameOfCurrentUser = userPublic.getUsername();
-
-			if (usernameOfCurrentUser.equals(username)) {
-				position = i + 1;
-				break;
-			}
-		}
+		int position = index != -1 ? index + 1 : -1;
 
 		return position;
 	}

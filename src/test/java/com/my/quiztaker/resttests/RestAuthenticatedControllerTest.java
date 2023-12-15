@@ -292,7 +292,7 @@ public class RestAuthenticatedControllerTest {
 
 	@Test
 	@Rollback
-	public void testGetQuizzesAuthIdMissmatchCase() throws Exception {
+	public void testGetQuizzesOfOthersAuthIdMissmatchCase() throws Exception {
 		String requestURI = END_POINT_PATH + "/quizzesbyuser/";
 
 		User user2 = userRepository.findByUsername("user2").get();
@@ -305,7 +305,7 @@ public class RestAuthenticatedControllerTest {
 
 	@Test
 	@Rollback
-	public void testGetQuizzesAuthGoodCases() throws Exception {
+	public void testGetQuizzesOfOthersAuthGoodCases() throws Exception {
 		String requestURI = END_POINT_PATH + "/quizzesbyuser/";
 
 		User user1 = userRepository.findByUsername("user1").get();

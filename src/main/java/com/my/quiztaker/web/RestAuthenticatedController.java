@@ -44,6 +44,7 @@ import com.my.quiztaker.model.User;
 import com.my.quiztaker.model.UserRepository;
 import com.my.quiztaker.service.AuthenticationService;
 import com.my.quiztaker.service.QuestionService;
+import com.my.quiztaker.service.QuizService;
 import com.my.quiztaker.service.UserService;
 
 @RestController
@@ -74,6 +75,9 @@ public class RestAuthenticatedController {
 	
 	@Autowired
 	private UserService userService;
+	
+	@Autowired
+	private QuizService quizService;
 
 	@Autowired
 	private AuthenticationService jwtService;
@@ -109,37 +113,11 @@ public class RestAuthenticatedController {
 
 	@RequestMapping("/quizzesbyuser/{userid}")
 	@PreAuthorize("isAuthenticated()")
-	public @ResponseBody List<QuizRatingQuestions> getQuizzesAuth(@PathVariable("userid") Long userId,
+	public @ResponseBody List<QuizRatingQuestions> getQuizzesOfOthersAuth(@PathVariable("userid") Long userId,
 			Authentication auth) {
-		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
-			MyUser myUser = (MyUser) auth.getPrincipal();
-			Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
-
-			if (optUser.isPresent() && optUser.get().getId() == userId) {
-				List<Quiz> quizzesOfOthers = quizRepository.findPublishedQuizzesFromOtherUsers(userId);
-				Double rating;
-				QuizRatingQuestions quizRatingQuestions;
-				Integer questions;
-
-				List<QuizRatingQuestions> quizRatingsQuestionss = new ArrayList<QuizRatingQuestions>();
-
-				for (Quiz quiz : quizzesOfOthers) {
-					if (attemptRepository.findAttemptsForTheQuizByUserId(userId, quiz.getQuizId()) == 0) {
-						rating = attemptRepository.findQuizRating(quiz.getQuizId());
-						questions = questionRepository.findQuestionsByQuizId(quiz.getQuizId()).size();
-						quizRatingQuestions = new QuizRatingQuestions(quiz, rating, questions);
-
-						quizRatingsQuestionss.add(quizRatingQuestions);
-					}
-				}
-
-				return quizRatingsQuestionss;
-			} else {
-				throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
-			}
-		} else {
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You are not authorized");
-		}
+		
+		return quizService.getQuizzesOfOthersAuth(userId, auth);
+		
 	}
 
 	@RequestMapping("/personalquizzes/{userid}")

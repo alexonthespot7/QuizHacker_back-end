@@ -13,7 +13,6 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 import com.my.quiztaker.model.User;
-import com.my.quiztaker.model.UserRepository;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -21,7 +20,7 @@ import jakarta.mail.internet.MimeMessage;
 @Service
 public class MailService {
 	@Autowired
-	private UserRepository userRepository;
+	private CommonService commonService;
 
 	@Autowired
 	private JavaMailSender mailSender;
@@ -35,18 +34,12 @@ public class MailService {
 					.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
 
 		} catch (MailAuthenticationException exc) {
-			this.verifyUser(user);
+			commonService.verifyUser(user);
 
 			return ResponseEntity.created(null).header(HttpHeaders.HOST, user.getId().toString())
 					.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").contentType(MediaType.TEXT_PLAIN)
 					.body("The email service is not available now, your account has been verified. You can login now");
 		}
-	}
-
-	public void verifyUser(User user) {
-		user.setAccountVerified(true);
-		user.setVerificationCode(null);
-		userRepository.save(user);
 	}
 
 	public ResponseEntity<?> tryToSendPasswordMail(User user, String password)

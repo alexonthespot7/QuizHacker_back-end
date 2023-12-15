@@ -3,12 +3,15 @@ package com.my.quiztaker.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.my.quiztaker.MyUser;
 import com.my.quiztaker.forms.QuizRating;
 import com.my.quiztaker.forms.QuizRatingQuestions;
 import com.my.quiztaker.model.AttemptRepository;
@@ -16,6 +19,8 @@ import com.my.quiztaker.model.Question;
 import com.my.quiztaker.model.QuestionRepository;
 import com.my.quiztaker.model.Quiz;
 import com.my.quiztaker.model.QuizRepository;
+import com.my.quiztaker.model.User;
+import com.my.quiztaker.model.UserRepository;
 
 @Service
 public class QuizService {
@@ -27,6 +32,9 @@ public class QuizService {
 
 	@Autowired
 	private QuestionRepository questionRepository;
+
+	@Autowired
+	private CommonService commonService;
 
 	// Method to get published quizzes with its rating and amount of questions;
 	public List<QuizRatingQuestions> getQuizzes() {
@@ -42,25 +50,30 @@ public class QuizService {
 
 	// The method to get quiz info and its rating by quiz ID:
 	public QuizRating getQuizById(Long quizId) {
-		Quiz quiz = this.checkQuizById(quizId);
+		Quiz quiz = commonService.checkQuizById(quizId);
 
 		Double rating = attemptRepository.findQuizRating(quizId);
 
 		return new QuizRating(quiz, rating);
 	}
 
+	// Method to get published quizzes created by other users than the authenticated
+	// one:
+	public List<QuizRatingQuestions> getQuizzesOfOthersAuth(Long userId, Authentication auth) {
+		commonService.checkAuthentication(auth, userId);
+
+		List<Quiz> quizzesOfOthersNoAttempts = this.getQuizzesOfOthersThatUserDidntAttempt(userId);
+
+		List<QuizRatingQuestions> quizRatingQuestionsList = this
+				.makeQuizRatingQuestionsListFromQuizzes(quizzesOfOthersNoAttempts);
+
+		return quizRatingQuestionsList;
+	}
+
 	private List<QuizRatingQuestions> makeQuizRatingQuestionsListFromQuizzes(List<Quiz> quizzes) {
-		List<QuizRatingQuestions> quizRatingsQuestionsList = new ArrayList<QuizRatingQuestions>();
-
-		QuizRatingQuestions quizRatingQuestions;
-
-		for (Quiz quiz : quizzes) {
-			quizRatingQuestions = this.makeQuizRatingQuestionsFromQuiz(quiz);
-
-			quizRatingsQuestionsList.add(quizRatingQuestions);
-		}
-
-		return quizRatingsQuestionsList;
+		return quizzes.stream()
+	            .map(this::makeQuizRatingQuestionsFromQuiz)
+	            .collect(Collectors.toList());
 	}
 
 	private QuizRatingQuestions makeQuizRatingQuestionsFromQuiz(Quiz quiz) {
@@ -82,14 +95,11 @@ public class QuizService {
 		return questionsAmount;
 	}
 
-	private Quiz checkQuizById(Long quizId) {
-		Optional<Quiz> optionalQuiz = quizRepository.findById(quizId);
+	private List<Quiz> getQuizzesOfOthersThatUserDidntAttempt(Long userId) {
+		List<Quiz> quizzesOfOthers = quizRepository.findPublishedQuizzesFromOtherUsers(userId);
 
-		if (!optionalQuiz.isPresent())
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "There's no quiz with this id");
-
-		Quiz quiz = optionalQuiz.get();
-
-		return quiz;
+		return quizzesOfOthers.stream()
+				.filter(quiz -> attemptRepository.findAttemptsForTheQuizByUserId(userId, quiz.getQuizId()) == 0)
+				.collect(Collectors.toList());
 	}
 }
