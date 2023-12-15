@@ -134,14 +134,14 @@ public class UserService {
 
 	// Method to get personal info of authenticated user:
 	public PersonalInfo getPersonalInfo(Long userId, Authentication auth) {
-		User user = commonService.checkAuthentication(auth, userId);
+		User user = commonService.checkAuthenticationAndRights(auth, userId);
 
 		return this.createPersonalInfoInstance(user, userId);
 	}
 
 	// Method to get leaderboard for authenticated user:
 	public Leaderboard getLeaderboardAuth(Long userId, Authentication auth) {
-		User user = commonService.checkAuthentication(auth, userId);
+		User user = commonService.checkAuthenticationAndRights(auth, userId);
 
 		return this.createLeaderboardInstanceAuth(user, userId);
 	}

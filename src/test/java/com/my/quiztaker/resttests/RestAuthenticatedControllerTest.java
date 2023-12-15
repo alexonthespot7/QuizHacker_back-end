@@ -369,7 +369,7 @@ public class RestAuthenticatedControllerTest {
 		User user1 = userRepository.findByUsername("user1").get();
 		Long user1Id = user1.getId();
 
-		mockMvc.perform(get(requestURI).header("Authorization", jwtToken)).andExpect(status().isOk())
+		mockMvc.perform(post(requestURI).header("Authorization", jwtToken)).andExpect(status().isOk())
 				.andExpect(header().exists("Host"));
 
 		// Initially two quizzes was created for user1.

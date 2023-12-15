@@ -12,7 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -88,14 +90,14 @@ public class RestAuthenticatedController {
 	// limit to display only top 10 players:
 	private static final int LIMIT = 10;
 
-	@RequestMapping("/questions/{quizid}")
+	@GetMapping("/questions/{quizid}")
 	public @ResponseBody List<Question> getQuestionsByQuizId(@PathVariable("quizid") Long quizId, Authentication auth) {
 
 		return questionService.getQuestionsByQuizId(quizId, auth);
 		
 	}
 
-	@RequestMapping("/users/{userid}")
+	@GetMapping("/users/{userid}")
 	@PreAuthorize("isAuthenticated()")
 	public @ResponseBody PersonalInfo getPersonalInfo(@PathVariable("userid") Long userId, Authentication auth) {
 		
@@ -103,7 +105,7 @@ public class RestAuthenticatedController {
 	
 	}
 
-	@RequestMapping("/usersauth/{userid}")
+	@GetMapping("/usersauth/{userid}")
 	@PreAuthorize("isAuthenticated()")
 	public @ResponseBody Leaderboard getLeaderboardAuth(@PathVariable("userid") Long userId, Authentication auth) {
 		
@@ -111,7 +113,7 @@ public class RestAuthenticatedController {
 		
 	}
 
-	@RequestMapping("/quizzesbyuser/{userid}")
+	@GetMapping("/quizzesbyuser/{userid}")
 	@PreAuthorize("isAuthenticated()")
 	public @ResponseBody List<QuizRatingQuestions> getQuizzesOfOthersAuth(@PathVariable("userid") Long userId,
 			Authentication auth) {
@@ -120,7 +122,7 @@ public class RestAuthenticatedController {
 		
 	}
 
-	@RequestMapping("/personalquizzes/{userid}")
+	@GetMapping("/personalquizzes/{userid}")
 	@PreAuthorize("isAuthenticated()")
 	public @ResponseBody List<QuizRatingQuestions> getPersonalQuizzes(@PathVariable("userid") Long userId,
 			Authentication auth) {
@@ -129,51 +131,12 @@ public class RestAuthenticatedController {
 		
 	}
 
-	@RequestMapping(value = "/createquiz")
+	@PostMapping(value = "/createquiz")
 	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<?> createQuizByAuth(Authentication auth) {
-		if (auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser")) {
-			MyUser myUser = (MyUser) auth.getPrincipal();
-			Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
-
-			if (optUser.isPresent()) {
-				User user = optUser.get();
-				Quiz quiz = new Quiz(user, categoryRepository.findByName("Other").get(),
-						difficultyRepository.findByName("Hard").get());
-				quizRepository.save(quiz);
-
-				Question defaultQuestion1 = new Question(quiz);
-				Question defaultQuestion2 = new Question(quiz);
-				questionRepository.save(defaultQuestion1);
-				questionRepository.save(defaultQuestion2);
-
-				Answer defaultAnswer1 = new Answer(defaultQuestion1, true);
-				Answer defaultAnswer2 = new Answer(defaultQuestion1, false);
-				Answer defaultAnswer3 = new Answer(defaultQuestion1, false);
-				Answer defaultAnswer4 = new Answer(defaultQuestion1, false);
-
-				Answer defaultAnswer5 = new Answer(defaultQuestion2, true);
-				Answer defaultAnswer6 = new Answer(defaultQuestion2, false);
-				Answer defaultAnswer7 = new Answer(defaultQuestion2, false);
-				Answer defaultAnswer8 = new Answer(defaultQuestion2, false);
-
-				answerRepository.save(defaultAnswer1);
-				answerRepository.save(defaultAnswer2);
-				answerRepository.save(defaultAnswer3);
-				answerRepository.save(defaultAnswer4);
-				answerRepository.save(defaultAnswer5);
-				answerRepository.save(defaultAnswer6);
-				answerRepository.save(defaultAnswer7);
-				answerRepository.save(defaultAnswer8);
-
-				return ResponseEntity.ok().header(HttpHeaders.HOST, quiz.getQuizId().toString())
-						.header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Host").build();
-			} else {
-				return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401;
-			}
-		} else {
-			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401
-		}
+		
+		return quizService.createQuizByAuth(auth);
+		
 	}
 
 	@RequestMapping(value = "/updatequiz/{quizid}", method = RequestMethod.POST)

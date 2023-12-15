@@ -49,9 +49,9 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, "/quizzes", "/quizzes/*", "/questions", "/questions/*", "/answers/*", "/difficulties", "/categories", "/users").permitAll()
 						.requestMatchers(HttpMethod.POST, "/login", "/signup").permitAll()
 						.requestMatchers(HttpMethod.PUT, "/verify/*", "/resetpassword").permitAll()
+						.requestMatchers(HttpMethod.GET, "/addattempt/*", "/quizzesbyuser/*", "/usersauth/*", "/users/*", "/personalquizzes/*", "/getavatar/*").authenticated()
+						.requestMatchers(HttpMethod.POST, "/createquiz", "/changepassword", "/updatequiz/*", "/savequestions/*", "/publishquiz/*", "/sendattempt/*", "/updateavatar/*").authenticated()
 						.requestMatchers(HttpMethod.DELETE, "/deletequestion/*", "/deletequiz/*").authenticated()
-						.requestMatchers(HttpMethod.GET, "/addattempt/*", "/createquiz", "/quizzesbyuser/*", "/usersauth/*", "/users/*", "/personalquizzes/*", "/getavatar/*").authenticated()
-						.requestMatchers(HttpMethod.POST, "/changepassword", "/updatequiz/*", "/savequestions/*", "/publishquiz/*", "/sendattempt/*", "/updateavatar/*").authenticated()
 						.anyRequest().permitAll())
 				.addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class)
 				.exceptionHandling((exceptionHandling) -> exceptionHandling.authenticationEntryPoint(authExceptionHandler));
