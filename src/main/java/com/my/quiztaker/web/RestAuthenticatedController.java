@@ -188,97 +188,28 @@ public class RestAuthenticatedController {
 		
 	}
 
-	@RequestMapping(value = "/deletequiz/{quizid}", method = RequestMethod.DELETE)
+	@DeleteMapping("/deletequiz/{quizid}")
 	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<?> deleteQuizById(@PathVariable("quizid") Long quizId, Authentication auth) {
-		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
-			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401
-
-		MyUser myUser = (MyUser) auth.getPrincipal();
-		Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
-		Optional<Quiz> optQuiz = quizRepository.findById(quizId);
-
-		if (!optUser.isPresent())
-			return new ResponseEntity<>("Authorization problems", HttpStatus.UNAUTHORIZED); // 401;
-
-		User user = optUser.get();
-
-		if (!optQuiz.isPresent())
-			return new ResponseEntity<>("The quiz was not found for provided ID", HttpStatus.BAD_REQUEST);
-
-		Quiz quiz = optQuiz.get();
-
-		if (user.getId() != quiz.getUser().getId())
-			return new ResponseEntity<>("You can't delete someone else's quiz", HttpStatus.UNAUTHORIZED); // 401;
-
-		quizRepository.deleteById(quizId);
-
-		return new ResponseEntity<>("Quiz was deleted successfully", HttpStatus.OK);
+		
+		return quizService.deleteQuizById(quizId, auth);
+		
 	}
 
-	@RequestMapping(value = "/getavatar/{userid}")
+	@GetMapping("/getavatar/{userid}")
 	@PreAuthorize("isAuthenticated()")
 	public @ResponseBody String getAvatarByUserId(@PathVariable("userid") Long userId, Authentication auth) {
 
-		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authorization problems");
-
-		MyUser myUser = (MyUser) auth.getPrincipal();
-		Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
-
-		if (!optUser.isPresent())
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authorization problems");
-
-		User user = optUser.get();
-
-		if (user.getId() != userId)
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You can't get the avatarURL of other user");
-
-		return user.getAvatarUrl();
+		return userService.getAvatarByUserId(userId, auth);
 
 	}
 
-	@RequestMapping(value = "/updateavatar/{userid}", method = RequestMethod.POST)
+	@PutMapping("/updateavatar/{userid}")
 	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<?> updateAvatarByUserId(@PathVariable("userid") Long userId, @RequestBody String url,
 			Authentication auth) {
-		if (!auth.getPrincipal().getClass().toString().equals("class com.my.quiztaker.MyUser"))
-			return new ResponseEntity<>("Unauthorized", HttpStatus.UNAUTHORIZED);
+		
+		return userService.updateAvatarByUserId(userId, url, auth);
 
-		MyUser myUser = (MyUser) auth.getPrincipal();
-		Optional<User> optUser = userRepository.findByUsername(myUser.getUsername());
-
-		if (!optUser.isPresent())
-			return new ResponseEntity<>("Unauthorized", HttpStatus.UNAUTHORIZED);
-
-		User user = optUser.get();
-
-		if (user.getId() != userId)
-			return new ResponseEntity<>("You can't change someone else's avatarUrl", HttpStatus.UNAUTHORIZED);
-
-		user.setAvatarUrl(url);
-
-		userRepository.save(user);
-
-		return new ResponseEntity<>("The avatar url was updated successfully", HttpStatus.OK);
-
-	}
-
-	private int findPosition(String username, List<UserPublic> leaders) {
-		int position = -1;
-		UserPublic userPublic;
-		String usernameOfCurrentUser;
-
-		for (int i = 0; i < leaders.size(); i++) {
-			userPublic = leaders.get(i);
-			usernameOfCurrentUser = userPublic.getUsername();
-
-			if (usernameOfCurrentUser.equals(username)) {
-				position = i + 1;
-				break;
-			}
-		}
-
-		return position;
 	}
 }

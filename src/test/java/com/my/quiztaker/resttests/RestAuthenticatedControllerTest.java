@@ -999,8 +999,11 @@ public class RestAuthenticatedControllerTest {
 
 		String requestURINotFound = requestURI + Long.valueOf(200);
 
-		mockMvc.perform(delete(requestURINotFound).header("Authorization", jwtToken)).andExpect(status().isBadRequest())
-				.andExpect(content().string("The quiz was not found for provided ID"));
+		MvcResult result = mockMvc.perform(delete(requestURINotFound).header("Authorization", jwtToken))
+				.andExpect(status().isBadRequest()).andReturn();
+
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("There's no quiz with this id");
 	}
 
 	@Test
@@ -1016,9 +1019,11 @@ public class RestAuthenticatedControllerTest {
 
 		String requestURIOtherUserQuiz = requestURI + quiz1User2Id;
 
-		mockMvc.perform(delete(requestURIOtherUserQuiz).header("Authorization", jwtToken))
-				.andExpect(status().isUnauthorized())
-				.andExpect(content().string("You can't delete someone else's quiz"));
+		MvcResult result = mockMvc.perform(delete(requestURIOtherUserQuiz).header("Authorization", jwtToken))
+				.andExpect(status().isUnauthorized()).andReturn();
+
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("You are not allowed to get someone else's info");
 	}
 
 	@Test
@@ -1091,9 +1096,12 @@ public class RestAuthenticatedControllerTest {
 		String requestURIOtherUser = requestURI + user2Id;
 		String requestBody = "some-new-url.com";
 
-		mockMvc.perform(post(requestURIOtherUser).header("Authorization", jwtToken)
+		MvcResult result = mockMvc.perform(put(requestURIOtherUser).header("Authorization", jwtToken)
 				.contentType(MediaType.APPLICATION_JSON).content(requestBody)).andExpect(status().isUnauthorized())
-				.andExpect(content().string("You can't change someone else's avatarUrl"));
+				.andReturn();
+		
+		String message = result.getResponse().getErrorMessage();
+		assertThat(message).isEqualTo("You are not allowed to get someone else's info");
 	}
 
 	@Test
@@ -1108,7 +1116,7 @@ public class RestAuthenticatedControllerTest {
 
 		String requestBody = "some-new-url.com";
 
-		mockMvc.perform(post(requestURIGoodCase).header("Authorization", jwtToken)
+		mockMvc.perform(put(requestURIGoodCase).header("Authorization", jwtToken)
 				.contentType(MediaType.APPLICATION_JSON).content(requestBody)).andExpect(status().isOk());
 
 		user1 = userRepository.findByUsername("user1").get();

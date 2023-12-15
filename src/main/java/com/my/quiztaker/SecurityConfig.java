@@ -50,10 +50,11 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/login", "/signup").permitAll()
 						.requestMatchers(HttpMethod.PUT, "/verify/*", "/resetpassword").permitAll()
 						.requestMatchers(HttpMethod.GET, "/addattempt/*", "/quizzesbyuser/*", "/usersauth/*", "/users/*", "/personalquizzes/*", "/getavatar/*").authenticated()
-						.requestMatchers(HttpMethod.POST, "/createquiz", "/changepassword", "/sendattempt/*", "/updateavatar/*").authenticated()
-						.requestMatchers(HttpMethod.PUT, "/updatequiz/*",  "/savequestions/*", "/publishquiz/*").authenticated()
+						.requestMatchers(HttpMethod.POST, "/createquiz", "/changepassword", "/sendattempt/*").authenticated()
+						.requestMatchers(HttpMethod.PUT, "/updatequiz/*",  "/savequestions/*", "/publishquiz/*", "/updateavatar/*").authenticated()
 						.requestMatchers(HttpMethod.DELETE, "/deletequestion/*", "/deletequiz/*").authenticated()
-						.anyRequest().permitAll())
+						.requestMatchers("/error/**").permitAll()
+						.anyRequest().hasAuthority("ADMIN"))
 				.addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class)
 				.exceptionHandling((exceptionHandling) -> exceptionHandling.authenticationEntryPoint(authExceptionHandler));
 

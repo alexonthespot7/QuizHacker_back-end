@@ -25,10 +25,10 @@ public class CommonService {
 
 	@Autowired
 	private QuizRepository quizRepository;
-	
+
 	@Autowired
 	private QuestionRepository questionRepository;
-	
+
 	@Autowired
 	private AnswerRepository answerRepository;
 
@@ -74,7 +74,7 @@ public class CommonService {
 		user.setVerificationCode(null);
 		userRepository.save(user);
 	}
-	
+
 	// Method to check if the question's in db by ID:
 	public Question findQuestionById(Long questionId) {
 		Optional<Question> optionalQuestion = questionRepository.findById(questionId);
@@ -87,7 +87,7 @@ public class CommonService {
 
 		return question;
 	}
-	
+
 	// Method to check if the answer is in DB by ID:
 	public Answer findAnswerById(Long answerId) {
 		Optional<Answer> optionalAnswer = answerRepository.findById(answerId);

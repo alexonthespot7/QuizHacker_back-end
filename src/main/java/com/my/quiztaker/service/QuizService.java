@@ -141,6 +141,18 @@ public class QuizService {
 
 		return new ResponseEntity<>("Quiz was published successfully", HttpStatus.OK);
 	}
+	
+	// Method to delete quiz by id and authentication instance:
+	public ResponseEntity<?> deleteQuizById(Long quizId, Authentication auth) {
+		Quiz quiz = commonService.checkQuizById(quizId);
+		Long idOfQuizOwner = quiz.getUser().getId();
+		
+		commonService.checkAuthenticationAndRights(auth, idOfQuizOwner);
+
+		quizRepository.deleteById(quizId);
+
+		return new ResponseEntity<>("Quiz was deleted successfully", HttpStatus.OK);
+	}
 
 	private List<QuizRatingQuestions> makeQuizRatingQuestionsListFromQuizzes(List<Quiz> quizzes) {
 		return quizzes.stream().map(this::makeQuizRatingQuestionsFromQuiz).collect(Collectors.toList());

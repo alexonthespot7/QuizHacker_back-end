@@ -146,6 +146,24 @@ public class UserService {
 		return this.createLeaderboardInstanceAuth(user, userId);
 	}
 
+	// Method to get avatar url by userId and authentication instance:
+	public String getAvatarByUserId(Long userId, Authentication auth) {
+		User user = commonService.checkAuthenticationAndRights(auth, userId);
+
+		return user.getAvatarUrl();
+	}
+	
+	// Method to update avatar url by user id and authentication instance:
+	public ResponseEntity<?> updateAvatarByUserId(Long userId, String url, Authentication auth) {
+		User user = commonService.checkAuthenticationAndRights(auth, userId);
+
+		user.setAvatarUrl(url);
+
+		userRepository.save(user);
+
+		return new ResponseEntity<>("The avatar url was updated successfully", HttpStatus.OK);
+	}
+	
 	private List<UserPublic> getTop10(List<UserPublic> leaders) {
 		leaders = leaders.subList(0, Math.min(leaders.size(), LIMIT));
 		
