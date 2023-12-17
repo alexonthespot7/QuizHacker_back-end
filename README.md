@@ -71,6 +71,11 @@
 - **junit-jupiter-api**: JUnit 5 API for writing tests.
 - **junit-jupiter-engine**: JUnit 5 test engine implementation.
 - **spring-boot-starter-validation**: Starter for using validation in Spring Boot applications.
+
+## Documentation
+The documentation for this project is made with Swagger and can be accessed after launching the project at the following endpoints: 
+1. [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html): if you're running the app on your pc.
+2. [https://quiz-hacker-back-end.onrender.com/swagger-ui.html](https://quiz-hacker-back-end.onrender.com/swagger-ui.html): deployed app.
   
 ## Testing
 ### Usage Guide
