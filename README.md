@@ -4,8 +4,6 @@
 > The client-end side (mobile app) of this project is available [here](https://github.com/alexonthespot7/QuizHackerMobile)<br>
 >
 > The production version is under [production branch](https://github.com/alexonthespot7/QuizHacker_back-end/tree/production)<br>
->
-> The deployed back-end side of the application can be found [here](https://quiz-hacker-back-end.onrender.com). The response speed is quite low, as the free instance is used.<br>
 
 ## Table of Contents
 * [Usage Guide](#usage-guide)
